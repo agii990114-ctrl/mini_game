@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>타이머 추가 지뢰찾기 PRO</title>
+    <title>조작 완전 통일 지뢰찾기 PRO</title>
     <style>
         * {
             -webkit-touch-callout: none;
@@ -82,14 +82,11 @@
             border: 1px solid var(--panel-border);
             color: var(--text-color);
             padding: 8px 12px;
-            border-radius: 20px;
+            border-radius: 200px;
             cursor: pointer;
             font-size: 0.9rem;
             font-weight: bold;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            display: flex;
-            align-items: center;
-            gap: 5px;
             z-index: 10;
         }
 
@@ -122,12 +119,11 @@
 
         .btn-diff.active {
             background: var(--accent-gradient);
-            color: #0e121a;
+            color: #fff;
             border-color: var(--accent-color);
             box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
         }
 
-        /* 정보 패널 내부에 타이머와 지뢰 개수를 나란히 배치 */
         #info-panel {
             display: flex;
             gap: 30px;
@@ -206,11 +202,11 @@
         .c-6 { color: #e1b12c; }
 
         #tip {
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             color: var(--tip-color);
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             text-align: center;
-            line-height: 1.4;
+            line-height: 1.5;
         }
 
         #reset-btn {
@@ -248,7 +244,9 @@
     </div>
 
     <p id="tip">
-        📱 모바일: <b>길게 누르면 깃발</b> | 💻 PC: <b>우클릭이 깃발</b>
+        🎮 <b>PC & 모바일 조작 통일</b><br>
+        <b>1번 클릭(터치)</b> = 🚩 깃발 꽂기/해제<br>
+        <b>연속 2번 클릭(따닥!)</b> = ⛏️ 칸 파기 (오픈)
     </p>
     <button id="reset-btn" onclick="initGame()">Restart</button>
 
@@ -268,7 +266,6 @@
         let gameOver = false;
         let flags = 0;
 
-        // 타이머 관련 변수
         let timerSeconds = 0;
         let timerInterval = null;
         let isFirstClick = true;
@@ -338,14 +335,10 @@
             }
         }
 
-        /* -----------------------------------------
-           ⏱️ 타이머 구동 제어 함수들
-        ----------------------------------------- */
         function startTimer() {
             if (timerInterval) return;
             timerInterval = setInterval(() => {
                 timerSeconds++;
-                // 999초를 넘기지 않게 제한하고 3자리 포맷팅 (001, 012...) 적용
                 if (timerSeconds > 999) timerSeconds = 999;
                 timerElement.innerText = String(timerSeconds).padStart(3, '0');
             }, 1000);
@@ -365,8 +358,6 @@
 
         function initGame() {
             boardElement.innerHTML = '';
-            
-            // 타이머 리셋
             resetTimer();
 
             boardElement.style.gridTemplateColumns = `repeat(${boardSize}, 36px)`;
@@ -417,34 +408,39 @@
                     const cellDom = document.createElement('div');
                     cellDom.classList.add('cell');
 
-                    let touchTimer = null;
-                    let isLongPress = false;
+                    // [조작 통합] PC 마우스 클릭과 모바일 터치를 모두 커버하는 타이머 판정
+                    let clickTimer = null;
 
-                    const startEvent = (e) => {
+                    const handleUnifiedClick = (e) => {
+                        e.preventDefault();
                         if (gameOver) return;
-                        isLongPress = false;
-                        touchTimer = setTimeout(() => {
-                            isLongPress = true;
-                            handleRightClick(r, c);
-                        }, 500);
-                    };
 
-                    const endEvent = (e) => {
-                        clearTimeout(touchTimer);
-                        if (gameOver) return;
-                        if (!isLongPress && e.button !== 2) {
-                            handleLeftClick(r, c);
+                        let cell = board[r][c];
+                        if (cell.isRevealed) return;
+
+                        // 연속 클릭이 들어온 경우 -> 더블클릭 (파기)
+                        if (clickTimer) {
+                            clearTimeout(clickTimer);
+                            clickTimer = null;
+                            handleLeftClick(r, c); 
+                        } 
+                        // 첫 번째 클릭인 경우 -> 다음 클릭을 250ms 동안 대기
+                        else {
+                            clickTimer = setTimeout(() => {
+                                clickTimer = null;
+                                // 시간 내 추가 클릭이 없다면 원클릭 (깃발)
+                                handleRightClick(r, c); 
+                            }, 250); 
                         }
                     };
 
-                    const cancelEvent = () => clearTimeout(touchTimer);
+                    // 마우스 클릭 및 모바일 터치 이벤트를 동일한 함수로 바인딩
+                    cellDom.addEventListener('click', handleUnifiedClick);
 
-                    cellDom.addEventListener('mousedown', startEvent);
-                    cellDom.addEventListener('mouseup', endEvent);
-                    cellDom.addEventListener('touchstart', (e) => { e.preventDefault(); startEvent(e); });
-                    cellDom.addEventListener('touchend', (e) => { e.preventDefault(); endEvent(e); });
-                    cellDom.addEventListener('touchmove', cancelEvent);
-                    cellDom.addEventListener('contextmenu', (e) => { e.preventDefault(); handleRightClick(r, c); });
+                    // PC 브라우저 기본 우클릭 메뉴가 튀어나와 흐름을 방해하는 현상 전면 차단
+                    cellDom.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                    });
 
                     boardElement.appendChild(cellDom);
                 }
@@ -458,7 +454,6 @@
             let cell = board[r][c];
             if (cell.isRevealed || cell.isFlagged) return;
 
-            // [첫 클릭 타임 스탬프] 아무것도 누르지 않은 첫 순간에만 타이머 시동!
             if (isFirstClick) {
                 isFirstClick = false;
                 startTimer();
@@ -508,7 +503,6 @@
             let cell = board[r][c];
             if (cell.isRevealed) return;
 
-            // 깃발을 꽂을 때도 첫 액션이라면 타이머를 작동시킬 수 있게 설계
             if (isFirstClick) {
                 isFirstClick = false;
                 startTimer();
@@ -532,7 +526,7 @@
 
         function endGame(isWin) {
             gameOver = true;
-            stopTimer(); // 게임이 끝나면 타이머 일시 정지
+            stopTimer();
 
             setTimeout(() => {
                 if (isWin) alert(`🎉 완벽합니다! 모든 지뢰를 무력화했습니다!\n⏱️ 기록: ${timerSeconds}초`);
