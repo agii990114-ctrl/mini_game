@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Solitaire Pro - Fully Responsive</title>
+    <style>
+        :root {
+            /* 모바일 화면을 기준으로 카드의 동적 크기 조절을 위한 CSS 변수 설정 */
+            --card-width: 12vw;
+            --card-height: 17.5vw;
+            --card-gap: 1.5vw;
+            --max-card-width: 75px;
+            --max-card-height: 110px;
+        }
+
+        /* 화면이 넓은 PC/태블릿에서는 카드 크기 상한선 지정 */
+        @media (min-width: 600px) {
+            :root {
+                --card-width: 75px;
+                --card-height: 110px;
+                --card-gap: 10px;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #1b5e20;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 10px;
+            overflow-x: hidden;
+            /* 모바일 스크롤 바운스 방지 */
+            overscroll-behavior: contain; 
+        }
+
+        h1 {
+            margin: 5px 0 10px 0;
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        #score-board {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 6px 20px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+        }
+
+        #solitaire-board {
+            width: 100%;
+            max-width: 650px;
+            display: flex;
+            flex-direction: column;
+            gap: var(--card-gap);
+            position: relative;
+        }
+
+        .top-region {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .left-decks, .right-decks {
+            display: flex;
+            gap: var(--card-gap);
+        }
+
+        .bottom-region {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            /* 모바일에서 세로 영역이 넘치지 않게 가변 높이 지정 */
+            min-height: calc(var(--card-height) * 3.5);
+        }
+
+        .card-slot {
+            width: var(--card-width);
+            max-width: var(--max-card-width);
+            height: var(--card-height);
+            max-height: var(--max-card-height);
+            border: 1.5px dashed rgba(255, 255, 255, 0.25);
+            border-radius: 6px;
+            position: relative;
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .tableau-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            width: var(--card-width);
+            max-width: var(--max-card-width);
+        }
+
+        .card {
+            width: var(--card-width);
+            max-width: var(--max-card-width);
+            height: var(--card-height);
+            max-height: var(--max-card-height);
+            border-radius: 6px;
+            position: absolute;
+            background-color: #ffffff;
+            box-shadow: 0 1.5px 3px rgba(0,0,0,0.25);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 4px;
+            cursor: pointer;
+            transition: transform 0.23s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.23s ease;
+            transform-origin: top left;
+        }
+
+        .card.moving {
+            z-index: 9999 !important;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.45);
+            pointer-events: none;
+        }
+
+        .card.back {
+            background: linear-gradient(135deg, #b71c1c 25%, #7f0000 25%, #7f0000 50%, #b71c1c 50%, #b71c1c 75%, #7f0000 75%, #7f0000 100%);
+            background-size: 10px 10px;
+            border: 1.5px solid #ffffff;
+        }
+
+        .card.back * { display: none; }
+        .card.red { color: #d32f2f; }
+        .card.black { color: #212121; }
+
+        /* 모바일 화면 크기에 적응하는 카드 내부 마크 크기 */
+        .card-suit-top { 
+            font-size: calc(0.5rem + 0.8vw); 
+            font-weight: bold; 
+            line-height: 0.9; 
+        }
+        .card-suit-center { 
+            font-size: calc(1rem + 1.5vw); 
+            align-self: center; 
+            line-height: 1; 
+        }
+        .card-suit-bottom { 
+            font-size: calc(0.5rem + 0.8vw); 
+            font-weight: bold; 
+            transform: rotate(180deg); 
+            line-height: 0.9; 
+        }
+
+        /* 600px 이상 데스크톱 스케일 */
+        @media (min-width: 600px) {
+            .card-suit-top { font-size: 0.9rem; }
+            .card-suit-center { font-size: 1.8rem; }
+            .card-suit-bottom { font-size: 0.9rem; }
+        }
+
+        #controls { margin-top: 15px; display: flex; gap: 10px; }
+        .btn {
+            background-color: #ffffff; color: #1b5e20; border: none;
+            padding: 8px 22px; border-radius: 20px; font-weight: bold;
+            font-size: 0.9rem;
+            cursor: pointer; box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+
+    <h1>SOLITAIRE PRO</h1>
+
+    <div id="score-board">
+        <div>MOVES: <span id="move-count">0</span></div>
+    </div>
+
+    <div id="solitaire-board">
+        <div class="top-region">
+            <div class="left-decks">
+                <div id="stock-slot" class="card-slot" onclick="drawFromStock()"></div>
+                <div id="waste-slot" class="card-slot"></div>
+            </div>
+            <div class="right-decks">
+                <div id="foundation-0" class="card-slot foundation" data-suit="♠"></div>
+                <div id="foundation-1" class="card-slot foundation" data-suit="♥"></div>
+                <div id="foundation-2" class="card-slot foundation" data-suit="◆"></div>
+                <div id="foundation-3" class="card-slot foundation" data-suit="♣"></div>
+            </div>
+        </div>
+
+        <div class="bottom-region">
+            <div id="tableau-0" class="tableau-column" data-index="0"></div>
+            <div id="tableau-1" class="tableau-column" data-index="1"></div>
+            <div id="tableau-2" class="tableau-column" data-index="2"></div>
+            <div id="tableau-3" class="tableau-column" data-index="3"></div>
+            <div id="tableau-4" class="tableau-column" data-index="4"></div>
+            <div id="tableau-5" class="tableau-column" data-index="5"></div>
+            <div id="tableau-6" class="tableau-column" data-index="6"></div>
+        </div>
+    </div>
+
+    <div id="controls">
+        <button class="btn" onclick="initGame()">새 게임</button>
+    </div>
+
+    <script>
+        const SUITS = ['♠', '♥', '◆', '♣'];
+        const VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+        const SUIT_COLORS = { '♠': 'black', '♣': 'black', '♥': 'red', '◆': 'red' };
+
+        let deck = [];
+        let gameState = { stock: [], waste: [], foundation: [[], [], [], []], tableau: [[], [], [], [], [], [], []] };
+        let moves = 0;
+        let isAnimating = false;
+
+        function buildDeck() {
+            deck = [];
+            for (let suit of SUITS) {
+                for (let i = 0; i < VALUES.length; i++) {
+                    deck.push({ id: `${suit}-${VALUES[i]}`, suit, value: VALUES[i], score: i + 1, color: SUIT_COLORS[suit], isFaceUp: false });
+                }
+            }
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function initGame() {
+            moves = 0;
+            isAnimating = false;
+            document.getElementById('move-count').innerText = moves;
+            buildDeck();
+            shuffle(deck);
+
+            gameState.stock = []; gameState.waste = [];
+            gameState.foundation = [[], [], [], []];
+            gameState.tableau = [[], [], [], [], [], [], []];
+
+            for (let i = 0; i < 7; i++) {
+                for (let j = i; j < 7; j++) { gameState.tableau[j].push(deck.pop()); }
+                gameState.tableau[i][gameState.tableau[i].length - 1].isFaceUp = true;
+            }
+
+            gameState.stock = deck;
+            renderBoard();
+        }
+
+        function drawFromStock() {
+            if (isAnimating) return;
+            if (gameState.stock.length === 0 && gameState.waste.length === 0) return;
+
+            if (gameState.stock.length === 0) {
+                gameState.stock = gameState.waste.reverse().map(card => { card.isFaceUp = false; return card; });
+                gameState.waste = [];
+                renderBoard();
+            } else {
+                animateStockDraw();
+            }
+        }
+
+        function animateStockDraw() {
+            isAnimating = true;
+            const stockSlot = document.getElementById('stock-slot');
+            const wasteSlot = document.getElementById('waste-slot');
+
+            let tempCard = document.createElement('div');
+            tempCard.className = 'card back moving';
+            stockSlot.appendChild(tempCard);
+
+            const startRect = stockSlot.getBoundingClientRect();
+            const endRect = wasteSlot.getBoundingClientRect();
+
+            tempCard.getBoundingClientRect();
+            tempCard.style.transform = `translate(${endRect.left - startRect.left}px, ${endRect.top - startRect.top}px)`;
+
+            setTimeout(() => {
+                let card = gameState.stock.pop();
+                card.isFaceUp = true;
+                gameState.waste.push(card);
+                moves++;
+                document.getElementById('move-count').innerText = moves;
+                isAnimating = false;
+                renderBoard();
+            }, 230);
+        }
+
+        function renderBoard() {
+            const stockSlot = document.getElementById('stock-slot');
+            stockSlot.innerHTML = '';
+            if (gameState.stock.length > 0) {
+                let cardDiv = document.createElement('div');
+                cardDiv.className = 'card back';
+                stockSlot.appendChild(cardDiv);
+            } else {
+                stockSlot.innerHTML = '<span style="position:absolute; top:40%; left:12%; color:rgba(255,255,255,0.25); font-size: calc(0.4rem + 1vw); font-weight:bold; width:100%; text-align:center;">RELOAD</span>';
+            }
+
+            const wasteSlot = document.getElementById('waste-slot');
+            wasteSlot.innerHTML = '';
+            if (gameState.waste.length > 0) {
+                wasteSlot.appendChild(createCardDOM(gameState.waste[gameState.waste.length - 1], 'waste'));
+            }
+
+            for (let i = 0; i < 4; i++) {
+                const foundSlot = document.getElementById(`foundation-${i}`);
+                foundSlot.innerHTML = '';
+                if (gameState.foundation[i].length > 0) {
+                    foundSlot.appendChild(createCardDOM(gameState.foundation[i][gameState.foundation[i].length - 1], 'foundation', i));
+                } else {
+                    foundSlot.innerHTML = `<span style="position:absolute; top:35%; left:35%; color:rgba(255,255,255,0.15); font-size:calc(1rem + 1vw); font-weight:bold;">${SUITS[i]}</span>`;
+                }
+            }
+
+            // 모바일 화면 폭을 기준으로 카드 겹침 간격 유연하게 조절 (카드 높이의 약 18% 정도 쌓이게 설정)
+            const gapFactor = window.innerWidth < 600 ? window.innerWidth * 0.035 : 18;
+
+            for (let i = 0; i < 7; i++) {
+                const colDiv = document.getElementById(`tableau-${i}`);
+                colDiv.innerHTML = '';
+                gameState.tableau[i].forEach((card, cardIdx) => {
+                    let cardDOM = createCardDOM(card, 'tableau', i, cardIdx);
+                    cardDOM.id = card.id;
+                    cardDOM.style.top = `${cardIdx * gapFactor}px`;
+                    colDiv.appendChild(cardDOM);
+                });
+            }
+
+            checkWinCondition();
+        }
+
+        function createCardDOM(card, sourceZone, zoneIdx = 0, cardIdx = 0) {
+            let cardDiv = document.createElement('div');
+            if (!card.isFaceUp) { cardDiv.className = 'card back'; return cardDiv; }
+
+            cardDiv.className = `card ${card.color}`;
+            cardDiv.innerHTML = `
+                <div class="card-suit-top"><div>${card.value}</div><div style="font-size:80%">${card.suit}</div></div>
+                <div class="card-suit-center">${card.suit}</div>
+                <div class="card-suit-bottom"><div>${card.value}</div><div style="font-size:80%">${card.suit}</div></div>
+            `;
+
+            cardDiv.onclick = (e) => {
+                e.stopPropagation();
+                if (isAnimating) return;
+                handleSmartMove(card, sourceZone, zoneIdx, cardIdx);
+            };
+            return cardDiv;
+        }
+
+        function handleSmartMove(card, source, zoneIdx, cardIdx) {
+            if (!card.isFaceUp) return;
+
+            let isLastCard = (source === 'waste' || source === 'foundation' || (source === 'tableau' && cardIdx === gameState.tableau[zoneIdx].length - 1));
+
+            if (isLastCard && source !== 'foundation') {
+                for (let i = 0; i < 4; i++) {
+                    let fStack = gameState.foundation[i];
+                    if (fStack.length === 0 && card.value === 'A' && card.suit === SUITS[i]) {
+                        executeMotionMove(source, zoneIdx, cardIdx, 'foundation', i); return;
+                    } else if (fStack.length > 0) {
+                        let topF = fStack[fStack.length - 1];
+                        if (card.suit === topF.suit && card.score === topF.score + 1) {
+                            executeMotionMove(source, zoneIdx, cardIdx, 'foundation', i); return;
+                        }
+                    }
+                }
+            }
+
+            for (let i = 0; i < 7; i++) {
+                let tStack = gameState.tableau[i];
+                if (tStack.length === 0 && card.value === 'K') {
+                    if (source === 'tableau' && cardIdx === 0) continue;
+                    executeMotionMove(source, zoneIdx, cardIdx, 'tableau', i); return;
+                } else if (tStack.length > 0) {
+                    let topT = tStack[tStack.length - 1];
+                    if (card.color !== topT.color && card.score === topT.score - 1) {
+                        executeMotionMove(source, zoneIdx, cardIdx, 'tableau', i); return;
+                    }
+                }
+            }
+        }
+
+        function executeMotionMove(fromZone, fromIdx, cardIdx, toZone, toIdx) {
+            isAnimating = true;
+
+            let movingElements = [];
+            if (fromZone === 'tableau') {
+                const colDiv = document.getElementById(`tableau-${fromIdx}`);
+                const children = Array.from(colDiv.children);
+                movingElements = children.slice(cardIdx);
+            } else if (fromZone === 'waste') {
+                movingElements.push(document.getElementById('waste-slot').firstElementChild);
+            } else if (fromZone === 'foundation') {
+                movingElements.push(document.getElementById(`foundation-${fromIdx}`).firstElementChild);
+            }
+
+            if (movingElements.length === 0 || !movingElements[0]) {
+                moveCardData(fromZone, fromIdx, cardIdx, toZone, toIdx);
+                return;
+            }
+
+            let targetLeft = 0;
+            let targetTop = 0;
+            const gapFactor = window.innerWidth < 600 ? window.innerWidth * 0.035 : 18;
+
+            if (toZone === 'foundation') {
+                const rect = document.getElementById(`foundation-${toIdx}`).getBoundingClientRect();
+                targetLeft = rect.left;
+                targetTop = rect.top;
+            } else if (toZone === 'tableau') {
+                const colDiv = document.getElementById(`tableau-${toIdx}`);
+                const rect = colDiv.getBoundingClientRect();
+                targetLeft = rect.left;
+                targetTop = rect.top + (gameState.tableau[toIdx].length * gapFactor);
+            }
+
+            movingElements.forEach((el, index) => {
+                if (!el) return;
+                const currentRect = el.getBoundingClientRect();
+                const finalLeft = targetLeft - currentRect.left;
+                const finalTop = (targetTop + (index * gapFactor)) - currentRect.top;
+
+                el.classList.add('moving');
+                el.style.transform = `translate(${finalLeft}px, ${finalTop}px)`;
+            });
+
+            setTimeout(() => {
+                movingElements.forEach(el => { if(el) el.classList.remove('moving'); });
+                moveCardData(fromZone, fromIdx, cardIdx, toZone, toIdx);
+            }, 230);
+        }
+
+        function moveCardData(fromZone, fromIdx, cardIdx, toZone, toIdx) {
+            let movingCards = [];
+
+            if (fromZone === 'waste') movingCards.push(gameState.waste.pop());
+            else if (fromZone === 'foundation') movingCards.push(gameState.foundation[fromIdx].pop());
+            else if (fromZone === 'tableau') movingCards = gameState.tableau[fromIdx].splice(cardIdx);
+
+            if (toZone === 'foundation') gameState.foundation[toIdx].push(movingCards[0]);
+            else if (toZone === 'tableau') gameState.tableau[toIdx] = gameState.tableau[toIdx].concat(movingCards);
+
+            if (fromZone === 'tableau' && gameState.tableau[fromIdx].length > 0) {
+                let topCard = gameState.tableau[fromIdx][gameState.tableau[fromIdx].length - 1];
+                if (!topCard.isFaceUp) {
+                    topCard.isFaceUp = true;
+                }
+            }
+
+            moves++;
+            document.getElementById('move-count').innerText = moves;
+            isAnimating = false;
+            renderBoard();
+        }
+
+        function checkWinCondition() {
+            for (let i = 0; i < 4; i++) {
+                if (gameState.foundation[i].length !== 13) return false;
+            }
+            alert(`🎉 축하합니다! 완벽하게 클리어하셨습니다!`);
+            return true;
+        }
+
+        // 화면 회전(가로/세로 전환)이나 리사이즈 시 카드가 어긋나지 않도록 실시간 좌표 리스너 적용
+        window.addEventListener('resize', renderBoard);
+
+        initGame();
+    </script>
+</body>
+</html>
