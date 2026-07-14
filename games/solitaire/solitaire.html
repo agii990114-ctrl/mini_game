@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Solitaire Pro - Auto-Complete Edition</title>
+    <title>Solitaire Pro - Ultimate Edition</title>
     <style>
         :root {
             --card-width: 12vw;
@@ -152,24 +152,29 @@
             .card-suit-bottom { font-size: 0.9rem; }
         }
 
-        #controls { margin-top: 15px; display: flex; gap: 10px; }
+        #controls { margin-top: 15px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
         .btn {
             background-color: #ffffff; color: #1b5e20; border: none;
-            padding: 8px 22px; border-radius: 20px; font-weight: bold;
+            padding: 8px 18px; border-radius: 20px; font-weight: bold;
             font-size: 0.9rem;
             cursor: pointer; box-shadow: 0 3px 6px rgba(0,0,0,0.2);
             -webkit-tap-highlight-color: transparent;
             transition: all 0.2s;
         }
         .btn:active { transform: scale(0.95); }
+        .btn:disabled {
+            background-color: rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.6);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
 
-        /* ✨ 자동 정리 마법 버튼 스타일 */
         .btn-magic {
             background: linear-gradient(135deg, #ffd700, #ff8c00);
             color: #000000;
             box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
             animation: pulse 1.5s infinite alternate;
-            display: none; /* 평소엔 숨겨둠 */
+            display: none;
         }
 
         @keyframes pulse {
@@ -213,6 +218,7 @@
 
     <div id="controls">
         <button class="btn" onclick="initGame()">새 게임</button>
+        <button id="undo-btn" class="btn" onclick="undo()" disabled>↩️ 되돌리기</button>
         <button id="auto-complete-btn" class="btn btn-magic" onclick="triggerAutoComplete()">🪄 자동 정리</button>
     </div>
 
@@ -225,7 +231,10 @@
         let gameState = { stock: [], waste: [], foundation: [[], [], [], []], tableau: [[], [], [], [], [], [], []] };
         let moves = 0;
         let isAnimating = false;
-        let isAutoCompleting = false; // 자동 정리 진행 중 다른 조작 차단용 플래그
+        let isAutoCompleting = false;
+        
+        // ↩️ 무제한 이전 기록들을 누적 저장할 히스토리 스택
+        let historyStack = [];
 
         function buildDeck() {
             deck = [];
@@ -247,8 +256,10 @@
             moves = 0;
             isAnimating = false;
             isAutoCompleting = false;
+            historyStack = [];
             document.getElementById('move-count').innerText = moves;
             document.getElementById('auto-complete-btn').style.display = 'none';
+            updateUndoButtonState();
             buildDeck();
             shuffle(deck);
 
@@ -265,9 +276,45 @@
             renderBoard();
         }
 
+        // 💾 행동 직전의 상태를 히스토리에 기록하는 깊은 복사 함수
+        function saveToHistory() {
+            const stateCopy = JSON.parse(JSON.stringify(gameState));
+            historyStack.push({
+                gameState: stateCopy,
+                moves: moves
+            });
+            updateUndoButtonState();
+        }
+
+        // ↩️ 되돌리기 기능 실행부
+        function undo() {
+            if (isAnimating || isAutoCompleting || historyStack.length === 0) return;
+
+            const previousState = historyStack.pop();
+            gameState = previousState.gameState;
+            moves = previousState.moves;
+
+            document.getElementById('move-count').innerText = moves;
+            updateUndoButtonState();
+            renderBoard();
+        }
+
+        // 되돌리기 버튼 활성화/비활성화 시각화
+        function updateUndoButtonState() {
+            const undoBtn = document.getElementById('undo-btn');
+            if (historyStack.length > 0 && !isAutoCompleting) {
+                undoBtn.disabled = false;
+            } else {
+                undoBtn.disabled = true;
+            }
+        }
+
         function drawFromStock() {
             if (isAnimating || isAutoCompleting) return;
             if (gameState.stock.length === 0 && gameState.waste.length === 0) return;
+
+            // 상태 변화가 있으므로 저장
+            saveToHistory();
 
             if (gameState.stock.length === 0) {
                 gameState.stock = gameState.waste.reverse().map(card => { card.isFaceUp = false; return card; });
@@ -347,6 +394,7 @@
             if (!checkWinCondition() && !isAutoCompleting) {
                 checkAutoCompleteAvailability();
             }
+            updateUndoButtonState();
         }
 
         function createCardDOM(card, sourceZone, zoneIdx = 0, cardIdx = 0) {
@@ -377,10 +425,12 @@
                 for (let i = 0; i < 4; i++) {
                     let fStack = gameState.foundation[i];
                     if (fStack.length === 0 && card.value === 'A' && card.suit === SUITS[i]) {
+                        saveToHistory(); // 움직이기 전에 과거 기록 저장
                         executeMotionMove(source, zoneIdx, cardIdx, 'foundation', i); return;
                     } else if (fStack.length > 0) {
                         let topF = fStack[fStack.length - 1];
                         if (card.suit === topF.suit && card.score === topF.score + 1) {
+                            saveToHistory();
                             executeMotionMove(source, zoneIdx, cardIdx, 'foundation', i); return;
                         }
                     }
@@ -391,10 +441,12 @@
                 let tStack = gameState.tableau[i];
                 if (tStack.length === 0 && card.value === 'K') {
                     if (source === 'tableau' && cardIdx === 0) continue;
+                    saveToHistory();
                     executeMotionMove(source, zoneIdx, cardIdx, 'tableau', i); return;
                 } else if (tStack.length > 0) {
                     let topT = tStack[tStack.length - 1];
                     if (card.color !== topT.color && card.score === topT.score - 1) {
+                        saveToHistory();
                         executeMotionMove(source, zoneIdx, cardIdx, 'tableau', i); return;
                     }
                 }
@@ -478,9 +530,7 @@
             renderBoard();
         }
 
-        // 🧠 [자동 정리 탐색 알고리즘]
         function checkAutoCompleteAvailability() {
-            // 1. 뒤집혀 있는(뒷면) 카드가 바닥에 한 장이라도 있는지 스캔
             let hasHiddenCards = false;
             let totalTableauCards = 0;
             for (let i = 0; i < 7; i++) {
@@ -490,10 +540,8 @@
                 }
             }
 
-            // 2. 풀 더미와 오픈 덱이 완전히 비어 있는지 체크
             let isStockEmpty = gameState.stock.length === 0 && gameState.waste.length === 0;
 
-            // 뒷면 카드가 전혀 없고, 대기 카드 덱도 비었으며, 아직 하단에 정리 안 된 카드가 남아 있다면 버튼 등장!
             if (!hasHiddenCards && isStockEmpty && totalTableauCards > 0) {
                 document.getElementById('auto-complete-btn').style.display = 'block';
             } else {
@@ -501,23 +549,21 @@
             }
         }
 
-        // 🪄 [자동 정리 비동기 실행 루프]
         async function triggerAutoComplete() {
             if (isAutoCompleting) return;
             isAutoCompleting = true;
             document.getElementById('auto-complete-btn').style.display = 'none';
+            updateUndoButtonState(); // 자동 정리 도중 되돌리기 버튼 비활성화
 
             while (isAutoCompleting) {
                 let movedAny = false;
 
-                // 하단 7개 열의 맨 아래(마지막) 카드들을 한 번씩 검사
                 for (let i = 0; i < 7; i++) {
                     let col = gameState.tableau[i];
                     if (col.length === 0) continue;
 
                     let card = col[col.length - 1];
 
-                    // 이 카드가 상단 홈 중 한 곳에 들어갈 수 있는지 탐색
                     for (let f = 0; f < 4; f++) {
                         let fStack = gameState.foundation[f];
                         let canMove = false;
@@ -532,7 +578,7 @@
                         }
 
                         if (canMove) {
-                            // 모션을 끝마칠 때까지 비동기(await) 대기 후 다음 카드로 진행
+                            saveToHistory(); // 자동 정리 카드 낱개 이동 전에도 히스토리 저장
                             await executeMotionMove('tableau', i, col.length - 1, 'foundation', f);
                             movedAny = true;
                             break;
@@ -541,19 +587,18 @@
                     if (movedAny) break;
                 }
 
-                // 무한 루프 방지: 더 이상 위로 보낼 수 있는 유효한 카드가 발견되지 않으면 종료
                 if (!movedAny) {
                     isAutoCompleting = false;
                     break;
                 }
             }
+            updateUndoButtonState();
         }
 
         function checkWinCondition() {
             for (let i = 0; i < 4; i++) {
                 if (gameState.foundation[i].length !== 13) return false;
             }
-            // 자동 정리 도중 연속으로 얼럿창이 발생하지 않도록 플래그 제어
             isAutoCompleting = false;
             document.getElementById('auto-complete-btn').style.display = 'none';
             setTimeout(() => {
