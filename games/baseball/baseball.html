@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Pitch & Strike - Number Baseball</title>
     <style>
         * {
@@ -85,7 +87,8 @@
             --disabled-text: rgba(255, 233, 214, 0.2);
         }
 
-        html, body {
+        html,
+        body {
             width: 100%;
             height: 100dvh;
             overflow: hidden;
@@ -140,10 +143,13 @@
             font-size: 0.75rem;
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
             white-space: nowrap;
         }
-        .btn-icon:active { transform: scale(0.95); }
+
+        .btn-icon:active {
+            transform: scale(0.95);
+        }
 
         /* ------------------ [2. 슬라이드 토글 설정창] ------------------ */
         .settings-panel {
@@ -156,7 +162,7 @@
             background: var(--settings-bg);
             border-radius: 18px;
             padding: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
             border: 1px solid var(--panel-border);
             z-index: 100;
             transition: top 0.3s cubic-bezier(0.25, 1, 0.5, 1);
@@ -211,7 +217,8 @@
             margin-top: 5px;
         }
 
-        .btn-apply, .btn-cancel {
+        .btn-apply,
+        .btn-cancel {
             border: none;
             padding: 10px 0;
             border-radius: 12px;
@@ -225,13 +232,19 @@
             background: var(--submit-bg);
             color: var(--submit-text);
         }
-        .btn-apply:active { background: var(--submit-active); }
+
+        .btn-apply:active {
+            background: var(--submit-active);
+        }
 
         .btn-cancel {
             background: var(--action-bg);
             color: var(--action-text);
         }
-        .btn-cancel:active { background: var(--key-active-bg); }
+
+        .btn-cancel:active {
+            background: var(--key-active-bg);
+        }
 
         /* ------------------ [3. 중앙 기록 전광판 영역] ------------------ */
         main {
@@ -245,7 +258,7 @@
             border-radius: 18px;
             overflow: hidden;
             border: 2px solid var(--panel-border);
-            box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
             min-height: 0;
         }
 
@@ -280,9 +293,20 @@
             font-size: 0.9rem;
             border-left: 4px solid transparent;
         }
-        .history-item.normal { border-left-color: var(--history-item-normal-border); }
-        .history-item.win { border-left-color: #4caf50; background: rgba(76, 175, 80, 0.12); }
-        .history-item.fail { border-left-color: #f44336; background: rgba(244, 67, 54, 0.12); }
+
+        .history-item.normal {
+            border-left-color: var(--history-item-normal-border);
+        }
+
+        .history-item.win {
+            border-left-color: #4caf50;
+            background: rgba(76, 175, 80, 0.12);
+        }
+
+        .history-item.fail {
+            border-left-color: #f44336;
+            background: rgba(244, 67, 54, 0.12);
+        }
 
         .try-count {
             color: var(--text-color);
@@ -291,6 +315,7 @@
             font-weight: bold;
             width: 35px;
         }
+
         .guess-val {
             font-weight: bold;
             letter-spacing: 2px;
@@ -298,10 +323,12 @@
             flex-grow: 1;
             padding-left: 10px;
         }
+
         .score-badges {
             display: flex;
             gap: 4px;
         }
+
         .badge {
             font-size: 0.7rem;
             font-weight: bold;
@@ -310,9 +337,21 @@
             min-width: 24px;
             text-align: center;
         }
-        .badge.strike { background-color: var(--strike-badge); color: #fff; }
-        .badge.ball { background-color: var(--ball-badge); color: #3a2b1a; }
-        .badge.out { background-color: var(--out-badge); color: #fff; }
+
+        .badge.strike {
+            background-color: var(--strike-badge);
+            color: #fff;
+        }
+
+        .badge.ball {
+            background-color: var(--ball-badge);
+            color: #3a2b1a;
+        }
+
+        .badge.out {
+            background-color: var(--out-badge);
+            color: #fff;
+        }
 
         /* ------------------ [4. 하단 플레이 입력 영역] ------------------ */
         footer {
@@ -345,6 +384,7 @@
             font-weight: bold;
             color: var(--accent-color);
         }
+
         .digit-slot.active {
             border-color: var(--slot-active-border);
             background: var(--slot-active-bg);
@@ -369,12 +409,14 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
         }
+
         .key-btn:active {
             background-color: var(--key-active-bg);
             transform: scale(0.95);
         }
+
         .key-btn:disabled {
             background-color: var(--disabled-bg);
             color: var(--disabled-text);
@@ -387,12 +429,14 @@
             color: var(--action-text);
             font-size: 0.9rem;
         }
+
         .key-btn.submit {
             background: var(--submit-bg);
             color: var(--submit-text);
             grid-column: span 4;
             font-size: 0.95rem;
         }
+
         .key-btn.submit:active {
             background: var(--submit-active);
         }
@@ -400,28 +444,159 @@
         .overlay {
             display: none;
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background: rgba(0, 0, 0, 0.4);
             z-index: 50;
         }
-        .overlay.open { display: block; }
+
+        .overlay.open {
+            display: block;
+        }
+
+        /* ------------------ [5. 결과 모달] ------------------ */
+        .result-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 200;
+        }
+
+        .result-overlay.open {
+            display: block;
+        }
+
+        .result-modal {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            width: calc(100% - 60px);
+            max-width: 380px;
+            background: var(--panel-bg);
+            border-radius: 22px;
+            padding: 26px 22px 22px 22px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+            border: 2px solid var(--panel-border);
+            z-index: 201;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        .result-modal.open {
+            display: block;
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .result-emoji {
+            font-size: 2.6rem;
+            margin-bottom: 6px;
+        }
+
+        .result-title {
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .result-title.win {
+            color: #4caf50;
+        }
+
+        .result-title.fail {
+            color: #f44336;
+        }
+
+        .result-desc {
+            font-size: 0.85rem;
+            opacity: 0.75;
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+
+        .result-answer-box {
+            background: var(--slot-bg);
+            border: 2px dashed var(--slot-border);
+            border-radius: 14px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .result-answer-label {
+            font-size: 0.75rem;
+            font-weight: bold;
+            opacity: 0.6;
+            margin-bottom: 6px;
+        }
+
+        .result-answer-digits {
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: 6px;
+            color: var(--accent-color);
+        }
+
+        .result-info {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            margin-bottom: 16px;
+        }
+
+        .result-close-btn {
+            width: 100%;
+        }
 
         /* ------------------ [반응형: 좁은 화면 대응] ------------------ */
         @media (max-width: 380px) {
-            h1 { font-size: 1rem; }
-            .btn-icon { font-size: 0.7rem; padding: 5px 8px; }
-            .digit-slot { width: 34px; font-size: 1.2rem; }
-            .key-btn { font-size: 0.95rem; padding: 9px 0; }
+            h1 {
+                font-size: 1rem;
+            }
+
+            .btn-icon {
+                font-size: 0.7rem;
+                padding: 5px 8px;
+            }
+
+            .digit-slot {
+                width: 34px;
+                font-size: 1.2rem;
+            }
+
+            .key-btn {
+                font-size: 0.95rem;
+                padding: 9px 0;
+            }
         }
 
         @media (max-height: 640px) {
-            .current-guess-box { height: 38px; }
-            .digit-slot { font-size: 1.2rem; }
-            .key-btn { padding: 8px 0; }
-            main { margin: 6px auto; }
+            .current-guess-box {
+                height: 38px;
+            }
+
+            .digit-slot {
+                font-size: 1.2rem;
+            }
+
+            .key-btn {
+                padding: 8px 0;
+            }
+
+            main {
+                margin: 6px auto;
+            }
         }
     </style>
 </head>
+
 <body>
 
     <div class="overlay" id="bg-overlay" onclick="cancelSettings()"></div>
@@ -471,12 +646,12 @@
             <div id="innings-status" style="color: var(--accent-color); font-weight: bold;">0 / 9</div>
         </div>
         <div class="history-list" id="history-box">
-            </div>
+        </div>
     </main>
 
     <footer>
         <div class="current-guess-box" id="guess-slots">
-            </div>
+        </div>
 
         <div class="keypad">
             <button class="key-btn num" onclick="pressNum(1)">1</button>
@@ -497,6 +672,21 @@
             <button class="key-btn submit" onclick="submitGuess()">⚾ PITCH! (결정)</button>
         </div>
     </footer>
+    <div class="result-overlay" id="result-overlay"></div>
+    <div class="result-modal" id="result-modal">
+        <div class="result-emoji" id="result-emoji">🎉</div>
+        <div class="result-title" id="result-title">승리!</div>
+        <div class="result-desc" id="result-desc">축하합니다! 정답을 맞추셨습니다.</div>
+
+        <div class="result-answer-box">
+            <div class="result-answer-label">정답</div>
+            <div class="result-answer-digits" id="result-answer-digits"></div>
+        </div>
+
+        <div class="result-info" id="result-info"></div>
+
+        <button class="btn-apply result-close-btn" onclick="closeResultModal()">🔄 새 게임 시작</button>
+    </div>
 
     <script>
         // 기본 3자리, 9이닝 설정
@@ -738,18 +928,50 @@
 
             if (isWin) {
                 if (lastItem) lastItem.className = 'history-item win';
-                setTimeout(() => {
-                    alert(`🎉 축하합니다! ${historyLog.length}회 만에 정답(${secretCode.join('')})을 맞추셨습니다!`);
-                }, 200);
             } else {
                 if (lastItem) lastItem.className = 'history-item fail';
-                setTimeout(() => {
-                    alert(`💥 게임 오버! 정답은 [ ${secretCode.join(' ')} ] 이었습니다!`);
-                }, 200);
             }
+
+            setTimeout(() => {
+                showResultModal(isWin);
+            }, 300);
         }
 
-        document.addEventListener('touchmove', function(e) {
+        function showResultModal(isWin) {
+            const emoji = document.getElementById('result-emoji');
+            const title = document.getElementById('result-title');
+            const desc = document.getElementById('result-desc');
+            const answerDigits = document.getElementById('result-answer-digits');
+            const info = document.getElementById('result-info');
+
+            answerDigits.innerText = secretCode.join(' ');
+
+            if (isWin) {
+                emoji.innerText = '🎉';
+                title.innerText = '승리! WIN';
+                title.className = 'result-title win';
+                desc.innerText = `${historyLog.length}번의 투구 만에 정답을 맞추셨습니다!`;
+                info.innerText = `⚾ 총 투구 수: ${historyLog.length}회`;
+            } else {
+                emoji.innerText = '💥';
+                title.innerText = '게임 오버';
+                title.className = 'result-title fail';
+                desc.innerText = '아쉽네요! 기회를 모두 소진했습니다.';
+                const maxVal = config.maxChances === '∞' ? '∞' : config.maxChances;
+                info.innerText = `⚾ 총 투구 수: ${historyLog.length} / ${maxVal}회`;
+            }
+
+            document.getElementById('result-overlay').classList.add('open');
+            document.getElementById('result-modal').classList.add('open');
+        }
+
+        function closeResultModal() {
+            document.getElementById('result-overlay').classList.remove('open');
+            document.getElementById('result-modal').classList.remove('open');
+            initGame();
+        }
+
+        document.addEventListener('touchmove', function (e) {
             if (!e.target.closest('#history-box')) {
                 e.preventDefault();
             }
@@ -759,4 +981,5 @@
         initGame();
     </script>
 </body>
+
 </html>
