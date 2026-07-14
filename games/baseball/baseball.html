@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Pitch & Strike - Number Baseball</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        :root {
+            --bg-color: #fff7e6;
+            --bg-gradient: linear-gradient(180deg, #fff7e6 0%, #ffe9c7 100%);
+            --text-color: #3a2b1a;
+            --accent-color: #ff6b35;
+            --accent-color-2: #2e7d32;
+            --header-title: #ff6b35;
+            --panel-bg: #ffffff;
+            --panel-border: #ffd8a8;
+            --board-header-bg: #ffedd5;
+            --history-item-bg: rgba(255, 107, 53, 0.06);
+            --history-item-normal-border: #ffb480;
+            --slot-bg: #fff3e0;
+            --slot-border: #ffd8a8;
+            --slot-active-border: #ff6b35;
+            --slot-active-bg: rgba(255, 107, 53, 0.12);
+            --key-bg: #ffffff;
+            --key-text: #3a2b1a;
+            --key-border: #ffd8a8;
+            --key-active-bg: #ffe4c4;
+            --action-bg: #ffe4c4;
+            --action-text: #a15c1c;
+            --submit-bg: linear-gradient(45deg, #ff6b35, #ff9558);
+            --submit-text: #ffffff;
+            --submit-active: #e85a2a;
+            --settings-bg: #ffffff;
+            --toggle-btn-bg: #ffffff;
+            --toggle-btn-text: #a15c1c;
+            --strike-badge: #ff6b35;
+            --ball-badge: #ffd23f;
+            --out-badge: #b0a99f;
+            --disabled-bg: #f5ede1;
+            --disabled-text: rgba(58, 43, 26, 0.25);
+        }
+
+        html.dark-theme {
+            --bg-color: #1a1410;
+            --bg-gradient: linear-gradient(180deg, #1a1410 0%, #241a12 100%);
+            --text-color: #ffe9d6;
+            --accent-color: #ff8c5a;
+            --accent-color-2: #6bcf7a;
+            --header-title: #ff8c5a;
+            --panel-bg: #26201a;
+            --panel-border: #3d3226;
+            --board-header-bg: #2f261c;
+            --history-item-bg: rgba(255, 140, 90, 0.08);
+            --history-item-normal-border: #a15c2a;
+            --slot-bg: #2f261c;
+            --slot-border: #4a3b28;
+            --slot-active-border: #ff8c5a;
+            --slot-active-bg: rgba(255, 140, 90, 0.15);
+            --key-bg: #2f261c;
+            --key-text: #ffe9d6;
+            --key-border: #4a3b28;
+            --key-active-bg: #3d3226;
+            --action-bg: #3d3226;
+            --action-text: #ffcda0;
+            --submit-bg: linear-gradient(45deg, #ff8c5a, #ff6b35);
+            --submit-text: #1a1410;
+            --submit-active: #ffa878;
+            --settings-bg: #26201a;
+            --toggle-btn-bg: #2f261c;
+            --toggle-btn-text: #ffcda0;
+            --strike-badge: #ff8c5a;
+            --ball-badge: #ffd23f;
+            --out-badge: #6b6258;
+            --disabled-bg: #1f1a14;
+            --disabled-text: rgba(255, 233, 214, 0.2);
+        }
+
+        html, body {
+            width: 100%;
+            height: 100dvh;
+            overflow: hidden;
+            background: var(--bg-gradient);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--text-color);
+            touch-action: none;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 10px 10px calc(10px + env(safe-area-inset-bottom)) 10px;
+            position: relative;
+        }
+
+        /* ------------------ [1. 상단 타이틀 & 버튼들] ------------------ */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            z-index: 10;
+            gap: 8px;
+        }
+
+        h1 {
+            font-size: 1.15rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            color: var(--header-title);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .header-btns {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-icon {
+            background-color: var(--toggle-btn-bg);
+            color: var(--toggle-btn-text);
+            border: 1px solid var(--panel-border);
+            padding: 6px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+            white-space: nowrap;
+        }
+        .btn-icon:active { transform: scale(0.95); }
+
+        /* ------------------ [2. 슬라이드 토글 설정창] ------------------ */
+        .settings-panel {
+            position: absolute;
+            top: -400px;
+            left: 10px;
+            right: 10px;
+            max-width: 500px;
+            margin: 0 auto;
+            background: var(--settings-bg);
+            border-radius: 18px;
+            padding: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+            border: 1px solid var(--panel-border);
+            z-index: 100;
+            transition: top 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .settings-panel.open {
+            top: 10px;
+        }
+
+        .settings-title {
+            font-size: 1rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            border-bottom: 2px dashed var(--panel-border);
+            padding-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .settings-label {
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .custom-select {
+            background-color: var(--slot-bg);
+            color: var(--text-color);
+            border: 1px solid var(--slot-border);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            outline: none;
+            width: 130px;
+            text-align: center;
+        }
+
+        .settings-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 5px;
+        }
+
+        .btn-apply, .btn-cancel {
+            border: none;
+            padding: 10px 0;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .btn-apply {
+            background: var(--submit-bg);
+            color: var(--submit-text);
+        }
+        .btn-apply:active { background: var(--submit-active); }
+
+        .btn-cancel {
+            background: var(--action-bg);
+            color: var(--action-text);
+        }
+        .btn-cancel:active { background: var(--key-active-bg); }
+
+        /* ------------------ [3. 중앙 기록 전광판 영역] ------------------ */
+        main {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 500px;
+            margin: 10px auto;
+            background: var(--panel-bg);
+            border-radius: 18px;
+            overflow: hidden;
+            border: 2px solid var(--panel-border);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+            min-height: 0;
+        }
+
+        .board-header {
+            background-color: var(--board-header-bg);
+            padding: 8px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+            border-bottom: 2px dashed var(--panel-border);
+        }
+
+        .history-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            pointer-events: auto;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--history-item-bg);
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            border-left: 4px solid transparent;
+        }
+        .history-item.normal { border-left-color: var(--history-item-normal-border); }
+        .history-item.win { border-left-color: #4caf50; background: rgba(76, 175, 80, 0.12); }
+        .history-item.fail { border-left-color: #f44336; background: rgba(244, 67, 54, 0.12); }
+
+        .try-count {
+            color: var(--text-color);
+            opacity: 0.4;
+            font-size: 0.75rem;
+            font-weight: bold;
+            width: 35px;
+        }
+        .guess-val {
+            font-weight: bold;
+            letter-spacing: 2px;
+            color: var(--text-color);
+            flex-grow: 1;
+            padding-left: 10px;
+        }
+        .score-badges {
+            display: flex;
+            gap: 4px;
+        }
+        .badge {
+            font-size: 0.7rem;
+            font-weight: bold;
+            padding: 3px 7px;
+            border-radius: 6px;
+            min-width: 24px;
+            text-align: center;
+        }
+        .badge.strike { background-color: var(--strike-badge); color: #fff; }
+        .badge.ball { background-color: var(--ball-badge); color: #3a2b1a; }
+        .badge.out { background-color: var(--out-badge); color: #fff; }
+
+        /* ------------------ [4. 하단 플레이 입력 영역] ------------------ */
+        footer {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .current-guess-box {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            height: 44px;
+        }
+
+        .digit-slot {
+            width: 40px;
+            height: 100%;
+            background: var(--slot-bg);
+            border: 2px solid var(--slot-border);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+        .digit-slot.active {
+            border-color: var(--slot-active-border);
+            background: var(--slot-active-bg);
+            box-shadow: 0 0 10px rgba(255, 107, 53, 0.2);
+        }
+
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 7px;
+        }
+
+        .key-btn {
+            background-color: var(--key-bg);
+            color: var(--key-text);
+            border: 1px solid var(--key-border);
+            padding: 11px 0;
+            border-radius: 12px;
+            font-size: 1.05rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+        }
+        .key-btn:active {
+            background-color: var(--key-active-bg);
+            transform: scale(0.95);
+        }
+        .key-btn:disabled {
+            background-color: var(--disabled-bg);
+            color: var(--disabled-text);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .key-btn.action {
+            background-color: var(--action-bg);
+            color: var(--action-text);
+            font-size: 0.9rem;
+        }
+        .key-btn.submit {
+            background: var(--submit-bg);
+            color: var(--submit-text);
+            grid-column: span 4;
+            font-size: 0.95rem;
+        }
+        .key-btn.submit:active {
+            background: var(--submit-active);
+        }
+
+        .overlay {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 50;
+        }
+        .overlay.open { display: block; }
+
+        /* ------------------ [반응형: 좁은 화면 대응] ------------------ */
+        @media (max-width: 380px) {
+            h1 { font-size: 1rem; }
+            .btn-icon { font-size: 0.7rem; padding: 5px 8px; }
+            .digit-slot { width: 34px; font-size: 1.2rem; }
+            .key-btn { font-size: 0.95rem; padding: 9px 0; }
+        }
+
+        @media (max-height: 640px) {
+            .current-guess-box { height: 38px; }
+            .digit-slot { font-size: 1.2rem; }
+            .key-btn { padding: 8px 0; }
+            main { margin: 6px auto; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="overlay" id="bg-overlay" onclick="cancelSettings()"></div>
+
+    <header>
+        <h1>⚾ PITCH &amp; STRIKE</h1>
+        <div class="header-btns">
+            <button class="btn-icon" id="theme-toggle-btn" onclick="toggleTheme()">🌙 다크</button>
+            <button class="btn-icon" onclick="openSettings()">⚙️ 설정</button>
+        </div>
+    </header>
+
+    <div class="settings-panel" id="settings-panel">
+        <div class="settings-title">⚾ 게임 규칙 설정</div>
+
+        <div class="settings-row">
+            <span class="settings-label">🔢 맞출 자릿수</span>
+            <select class="custom-select" id="digit-select">
+                <option value="3">3자리</option>
+                <option value="4">4자리</option>
+                <option value="5">5자리</option>
+                <option value="6">6자리</option>
+            </select>
+        </div>
+
+        <div class="settings-row">
+            <span class="settings-label">🥎 투구 제한 기회</span>
+            <select class="custom-select" id="chance-select">
+                <option value="7">7회</option>
+                <option value="9">9회</option>
+                <option value="12">12회</option>
+                <option value="15">15회</option>
+                <option value="20">20회</option>
+                <option value="∞">무제한 (∞)</option>
+            </select>
+        </div>
+
+        <div class="settings-actions">
+            <button class="btn-cancel" onclick="cancelSettings()">취소</button>
+            <button class="btn-apply" onclick="applySettings()">적용 &amp; 새 게임</button>
+        </div>
+    </div>
+
+    <main>
+        <div class="board-header">
+            <div>📋 기록 전광판</div>
+            <div id="innings-status" style="color: var(--accent-color); font-weight: bold;">0 / 9</div>
+        </div>
+        <div class="history-list" id="history-box">
+            </div>
+    </main>
+
+    <footer>
+        <div class="current-guess-box" id="guess-slots">
+            </div>
+
+        <div class="keypad">
+            <button class="key-btn num" onclick="pressNum(1)">1</button>
+            <button class="key-btn num" onclick="pressNum(2)">2</button>
+            <button class="key-btn num" onclick="pressNum(3)">3</button>
+            <button class="key-btn num" onclick="pressNum(4)">4</button>
+
+            <button class="key-btn num" onclick="pressNum(5)">5</button>
+            <button class="key-btn num" onclick="pressNum(6)">6</button>
+            <button class="key-btn num" onclick="pressNum(7)">7</button>
+            <button class="key-btn num" onclick="pressNum(8)">8</button>
+
+            <button class="key-btn num" onclick="pressNum(9)">9</button>
+            <button class="key-btn num" onclick="pressNum(0)">0</button>
+            <button class="key-btn action" onclick="pressDelete()">CLEAR</button>
+            <button class="key-btn action" onclick="pressBackspace()">◀</button>
+
+            <button class="key-btn submit" onclick="submitGuess()">⚾ PITCH! (결정)</button>
+        </div>
+    </footer>
+
+    <script>
+        // 기본 3자리, 9이닝 설정
+        let config = {
+            digits: 3,
+            maxChances: 9
+        };
+
+        let secretCode = [];
+        let currentGuess = [];
+        let historyLog = [];
+        let isGameOver = false;
+
+        const themeToggleBtn = document.getElementById('theme-toggle-btn');
+
+        // 🌗 테마 초기화 (저장된 값 또는 시스템 설정 따라가기)
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+                themeToggleBtn.innerText = '☀️ 라이트';
+            } else if (savedTheme === 'light') {
+                document.documentElement.classList.remove('dark-theme');
+                themeToggleBtn.innerText = '🌙 다크';
+            } else {
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (prefersDark) {
+                    document.documentElement.classList.add('dark-theme');
+                    themeToggleBtn.innerText = '☀️ 라이트';
+                } else {
+                    themeToggleBtn.innerText = '🌙 다크';
+                }
+            }
+        }
+
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark-theme');
+            if (isDark) {
+                themeToggleBtn.innerText = '☀️ 라이트';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                themeToggleBtn.innerText = '🌙 다크';
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        // ⚙️ 설정창 열기: 열 때마다 현재 config 값으로 select를 강제 동기화
+        function openSettings() {
+            document.getElementById('digit-select').value = String(config.digits);
+            document.getElementById('chance-select').value = String(config.maxChances);
+
+            document.getElementById('settings-panel').classList.add('open');
+            document.getElementById('bg-overlay').classList.add('open');
+        }
+
+        // ❌ 취소: select 값 되돌릴 필요 없이(다음에 열 때 다시 동기화하므로) 그냥 닫기만 함
+        function cancelSettings() {
+            document.getElementById('settings-panel').classList.remove('open');
+            document.getElementById('bg-overlay').classList.remove('open');
+        }
+
+        // 💾 적용: select 값 읽어서 config 반영 후 새 게임 시작
+        function applySettings() {
+            const digitSel = document.getElementById('digit-select').value;
+            const chanceSel = document.getElementById('chance-select').value;
+
+            config.digits = parseInt(digitSel);
+            config.maxChances = chanceSel === '∞' ? '∞' : parseInt(chanceSel);
+
+            cancelSettings(); // 패널 닫기 (취소와 닫는 동작은 동일)
+            initGame();
+        }
+
+        function initGame() {
+            isGameOver = false;
+            currentGuess = [];
+            historyLog = [];
+
+            generateSecretCode();
+            buildGuessSlots();
+            updateInningsUI();
+
+            document.getElementById('history-box').innerHTML = '';
+            updateKeypadStates();
+        }
+
+        function generateSecretCode() {
+            const pool = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+            secretCode = [];
+            for (let i = 0; i < config.digits; i++) {
+                const randIndex = Math.floor(Math.random() * pool.length);
+                secretCode.push(pool.splice(randIndex, 1)[0]);
+            }
+        }
+
+        function buildGuessSlots() {
+            const container = document.getElementById('guess-slots');
+            container.innerHTML = '';
+            for (let i = 0; i < config.digits; i++) {
+                const slot = document.createElement('div');
+                slot.className = 'digit-slot';
+                slot.id = `slot-${i}`;
+                container.appendChild(slot);
+            }
+        }
+
+        function updateSlotsUI() {
+            for (let i = 0; i < config.digits; i++) {
+                const slot = document.getElementById(`slot-${i}`);
+                if (currentGuess[i] !== undefined) {
+                    slot.innerText = currentGuess[i];
+                    slot.classList.add('active');
+                } else {
+                    slot.innerText = '';
+                    slot.classList.remove('active');
+                }
+            }
+        }
+
+        function pressNum(num) {
+            if (isGameOver) return;
+            if (currentGuess.length >= config.digits) return;
+            if (currentGuess.includes(num)) return;
+
+            currentGuess.push(num);
+            updateSlotsUI();
+            updateKeypadStates();
+        }
+
+        function pressBackspace() {
+            if (isGameOver) return;
+            currentGuess.pop();
+            updateSlotsUI();
+            updateKeypadStates();
+        }
+
+        function pressDelete() {
+            if (isGameOver) return;
+            currentGuess = [];
+            updateSlotsUI();
+            updateKeypadStates();
+        }
+
+        function updateKeypadStates() {
+            const buttons = document.querySelectorAll('.key-btn.num');
+            buttons.forEach(btn => {
+                const val = parseInt(btn.innerText);
+                if (currentGuess.includes(val) || currentGuess.length >= config.digits) {
+                    btn.disabled = true;
+                } else {
+                    btn.disabled = false;
+                }
+            });
+        }
+
+        function updateInningsUI() {
+            const currentTry = historyLog.length;
+            const maxVal = config.maxChances;
+            document.getElementById('innings-status').innerText = `${currentTry} / ${maxVal}`;
+        }
+
+        function submitGuess() {
+            if (isGameOver) return;
+            if (currentGuess.length < config.digits) {
+                alert(`${config.digits}자리 숫자를 모두 채워주세요!`);
+                return;
+            }
+
+            let strike = 0;
+            let ball = 0;
+            let out = 0;
+
+            for (let i = 0; i < config.digits; i++) {
+                const guessNum = currentGuess[i];
+                if (guessNum === secretCode[i]) {
+                    strike++;
+                } else if (secretCode.includes(guessNum)) {
+                    ball++;
+                } else {
+                    out++;
+                }
+            }
+
+            const roundResult = {
+                guess: [...currentGuess],
+                strike,
+                ball,
+                out
+            };
+            historyLog.push(roundResult);
+
+            renderNewLog(roundResult);
+            updateInningsUI();
+
+            if (strike === config.digits) {
+                endGame(true);
+            } else if (config.maxChances !== '∞' && historyLog.length >= config.maxChances) {
+                endGame(false);
+            } else {
+                currentGuess = [];
+                updateSlotsUI();
+                updateKeypadStates();
+            }
+        }
+
+        function renderNewLog(result) {
+            const box = document.getElementById('history-box');
+            const item = document.createElement('div');
+            item.className = 'history-item normal';
+
+            const tryNum = historyLog.length;
+            const guessStr = result.guess.join(' ');
+
+            let badgeHTML = '';
+            if (result.strike === 0 && result.ball === 0) {
+                badgeHTML = `<span class="badge out">OUT</span>`;
+            } else {
+                if (result.strike > 0) badgeHTML += `<span class="badge strike">${result.strike}S</span>`;
+                if (result.ball > 0) badgeHTML += `<span class="badge ball">${result.ball}B</span>`;
+            }
+
+            item.innerHTML = `
+                <div class="try-count"># ${tryNum}</div>
+                <div class="guess-val">${guessStr}</div>
+                <div class="score-badges">${badgeHTML}</div>
+            `;
+
+            box.appendChild(item);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function endGame(isWin) {
+            isGameOver = true;
+
+            const buttons = document.querySelectorAll('.key-btn.num');
+            buttons.forEach(btn => btn.disabled = true);
+
+            const lastItem = document.getElementById('history-box').lastElementChild;
+
+            if (isWin) {
+                if (lastItem) lastItem.className = 'history-item win';
+                setTimeout(() => {
+                    alert(`🎉 축하합니다! ${historyLog.length}회 만에 정답(${secretCode.join('')})을 맞추셨습니다!`);
+                }, 200);
+            } else {
+                if (lastItem) lastItem.className = 'history-item fail';
+                setTimeout(() => {
+                    alert(`💥 게임 오버! 정답은 [ ${secretCode.join(' ')} ] 이었습니다!`);
+                }, 200);
+            }
+        }
+
+        document.addEventListener('touchmove', function(e) {
+            if (!e.target.closest('#history-box')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        initTheme();
+        initGame();
+    </script>
+</body>
+</html>
