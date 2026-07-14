@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Solitaire Pro - Fully Responsive</title>
+    <title>Solitaire Pro - Auto-Complete Edition</title>
     <style>
         :root {
-            /* 모바일 화면을 기준으로 카드의 동적 크기 조절을 위한 CSS 변수 설정 */
             --card-width: 12vw;
             --card-height: 17.5vw;
             --card-gap: 1.5vw;
@@ -14,7 +13,6 @@
             --max-card-height: 110px;
         }
 
-        /* 화면이 넓은 PC/태블릿에서는 카드 크기 상한선 지정 */
         @media (min-width: 600px) {
             :root {
                 --card-width: 75px;
@@ -41,7 +39,6 @@
             min-height: 100vh;
             padding: 10px;
             overflow-x: hidden;
-            /* 모바일 스크롤 바운스 방지 */
             overscroll-behavior: contain; 
         }
 
@@ -88,7 +85,6 @@
             display: flex;
             justify-content: space-between;
             width: 100%;
-            /* 모바일에서 세로 영역이 넘치지 않게 가변 높이 지정 */
             min-height: calc(var(--card-height) * 3.5);
         }
 
@@ -146,25 +142,10 @@
         .card.red { color: #d32f2f; }
         .card.black { color: #212121; }
 
-        /* 모바일 화면 크기에 적응하는 카드 내부 마크 크기 */
-        .card-suit-top { 
-            font-size: calc(0.5rem + 0.8vw); 
-            font-weight: bold; 
-            line-height: 0.9; 
-        }
-        .card-suit-center { 
-            font-size: calc(1rem + 1.5vw); 
-            align-self: center; 
-            line-height: 1; 
-        }
-        .card-suit-bottom { 
-            font-size: calc(0.5rem + 0.8vw); 
-            font-weight: bold; 
-            transform: rotate(180deg); 
-            line-height: 0.9; 
-        }
+        .card-suit-top { font-size: calc(0.5rem + 0.8vw); font-weight: bold; line-height: 0.9; }
+        .card-suit-center { font-size: calc(1rem + 1.5vw); align-self: center; line-height: 1; }
+        .card-suit-bottom { font-size: calc(0.5rem + 0.8vw); font-weight: bold; transform: rotate(180deg); line-height: 0.9; }
 
-        /* 600px 이상 데스크톱 스케일 */
         @media (min-width: 600px) {
             .card-suit-top { font-size: 0.9rem; }
             .card-suit-center { font-size: 1.8rem; }
@@ -178,8 +159,23 @@
             font-size: 0.9rem;
             cursor: pointer; box-shadow: 0 3px 6px rgba(0,0,0,0.2);
             -webkit-tap-highlight-color: transparent;
+            transition: all 0.2s;
         }
         .btn:active { transform: scale(0.95); }
+
+        /* ✨ 자동 정리 마법 버튼 스타일 */
+        .btn-magic {
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            color: #000000;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+            animation: pulse 1.5s infinite alternate;
+            display: none; /* 평소엔 숨겨둠 */
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+            100% { transform: scale(1.05); box-shadow: 0 0 20px rgba(255, 215, 0, 0.9); }
+        }
     </style>
 </head>
 <body>
@@ -217,6 +213,7 @@
 
     <div id="controls">
         <button class="btn" onclick="initGame()">새 게임</button>
+        <button id="auto-complete-btn" class="btn btn-magic" onclick="triggerAutoComplete()">🪄 자동 정리</button>
     </div>
 
     <script>
@@ -228,6 +225,7 @@
         let gameState = { stock: [], waste: [], foundation: [[], [], [], []], tableau: [[], [], [], [], [], [], []] };
         let moves = 0;
         let isAnimating = false;
+        let isAutoCompleting = false; // 자동 정리 진행 중 다른 조작 차단용 플래그
 
         function buildDeck() {
             deck = [];
@@ -248,7 +246,9 @@
         function initGame() {
             moves = 0;
             isAnimating = false;
+            isAutoCompleting = false;
             document.getElementById('move-count').innerText = moves;
+            document.getElementById('auto-complete-btn').style.display = 'none';
             buildDeck();
             shuffle(deck);
 
@@ -266,7 +266,7 @@
         }
 
         function drawFromStock() {
-            if (isAnimating) return;
+            if (isAnimating || isAutoCompleting) return;
             if (gameState.stock.length === 0 && gameState.waste.length === 0) return;
 
             if (gameState.stock.length === 0) {
@@ -331,7 +331,6 @@
                 }
             }
 
-            // 모바일 화면 폭을 기준으로 카드 겹침 간격 유연하게 조절 (카드 높이의 약 18% 정도 쌓이게 설정)
             const gapFactor = window.innerWidth < 600 ? window.innerWidth * 0.035 : 18;
 
             for (let i = 0; i < 7; i++) {
@@ -345,7 +344,9 @@
                 });
             }
 
-            checkWinCondition();
+            if (!checkWinCondition() && !isAutoCompleting) {
+                checkAutoCompleteAvailability();
+            }
         }
 
         function createCardDOM(card, sourceZone, zoneIdx = 0, cardIdx = 0) {
@@ -361,7 +362,7 @@
 
             cardDiv.onclick = (e) => {
                 e.stopPropagation();
-                if (isAnimating) return;
+                if (isAnimating || isAutoCompleting) return;
                 handleSmartMove(card, sourceZone, zoneIdx, cardIdx);
             };
             return cardDiv;
@@ -401,53 +402,57 @@
         }
 
         function executeMotionMove(fromZone, fromIdx, cardIdx, toZone, toIdx) {
-            isAnimating = true;
+            return new Promise((resolve) => {
+                isAnimating = true;
 
-            let movingElements = [];
-            if (fromZone === 'tableau') {
-                const colDiv = document.getElementById(`tableau-${fromIdx}`);
-                const children = Array.from(colDiv.children);
-                movingElements = children.slice(cardIdx);
-            } else if (fromZone === 'waste') {
-                movingElements.push(document.getElementById('waste-slot').firstElementChild);
-            } else if (fromZone === 'foundation') {
-                movingElements.push(document.getElementById(`foundation-${fromIdx}`).firstElementChild);
-            }
+                let movingElements = [];
+                if (fromZone === 'tableau') {
+                    const colDiv = document.getElementById(`tableau-${fromIdx}`);
+                    const children = Array.from(colDiv.children);
+                    movingElements = children.slice(cardIdx);
+                } else if (fromZone === 'waste') {
+                    movingElements.push(document.getElementById('waste-slot').firstElementChild);
+                } else if (fromZone === 'foundation') {
+                    movingElements.push(document.getElementById(`foundation-${fromIdx}`).firstElementChild);
+                }
 
-            if (movingElements.length === 0 || !movingElements[0]) {
-                moveCardData(fromZone, fromIdx, cardIdx, toZone, toIdx);
-                return;
-            }
+                if (movingElements.length === 0 || !movingElements[0]) {
+                    moveCardData(fromZone, fromIdx, cardIdx, toZone, toIdx);
+                    resolve();
+                    return;
+                }
 
-            let targetLeft = 0;
-            let targetTop = 0;
-            const gapFactor = window.innerWidth < 600 ? window.innerWidth * 0.035 : 18;
+                let targetLeft = 0;
+                let targetTop = 0;
+                const gapFactor = window.innerWidth < 600 ? window.innerWidth * 0.035 : 18;
 
-            if (toZone === 'foundation') {
-                const rect = document.getElementById(`foundation-${toIdx}`).getBoundingClientRect();
-                targetLeft = rect.left;
-                targetTop = rect.top;
-            } else if (toZone === 'tableau') {
-                const colDiv = document.getElementById(`tableau-${toIdx}`);
-                const rect = colDiv.getBoundingClientRect();
-                targetLeft = rect.left;
-                targetTop = rect.top + (gameState.tableau[toIdx].length * gapFactor);
-            }
+                if (toZone === 'foundation') {
+                    const rect = document.getElementById(`foundation-${toIdx}`).getBoundingClientRect();
+                    targetLeft = rect.left;
+                    targetTop = rect.top;
+                } else if (toZone === 'tableau') {
+                    const colDiv = document.getElementById(`tableau-${toIdx}`);
+                    const rect = colDiv.getBoundingClientRect();
+                    targetLeft = rect.left;
+                    targetTop = rect.top + (gameState.tableau[toIdx].length * gapFactor);
+                }
 
-            movingElements.forEach((el, index) => {
-                if (!el) return;
-                const currentRect = el.getBoundingClientRect();
-                const finalLeft = targetLeft - currentRect.left;
-                const finalTop = (targetTop + (index * gapFactor)) - currentRect.top;
+                movingElements.forEach((el, index) => {
+                    if (!el) return;
+                    const currentRect = el.getBoundingClientRect();
+                    const finalLeft = targetLeft - currentRect.left;
+                    const finalTop = (targetTop + (index * gapFactor)) - currentRect.top;
 
-                el.classList.add('moving');
-                el.style.transform = `translate(${finalLeft}px, ${finalTop}px)`;
+                    el.classList.add('moving');
+                    el.style.transform = `translate(${finalLeft}px, ${finalTop}px)`;
+                });
+
+                setTimeout(() => {
+                    movingElements.forEach(el => { if(el) el.classList.remove('moving'); });
+                    moveCardData(fromZone, fromIdx, cardIdx, toZone, toIdx);
+                    resolve();
+                }, 230);
             });
-
-            setTimeout(() => {
-                movingElements.forEach(el => { if(el) el.classList.remove('moving'); });
-                moveCardData(fromZone, fromIdx, cardIdx, toZone, toIdx);
-            }, 230);
         }
 
         function moveCardData(fromZone, fromIdx, cardIdx, toZone, toIdx) {
@@ -473,15 +478,90 @@
             renderBoard();
         }
 
+        // 🧠 [자동 정리 탐색 알고리즘]
+        function checkAutoCompleteAvailability() {
+            // 1. 뒤집혀 있는(뒷면) 카드가 바닥에 한 장이라도 있는지 스캔
+            let hasHiddenCards = false;
+            let totalTableauCards = 0;
+            for (let i = 0; i < 7; i++) {
+                totalTableauCards += gameState.tableau[i].length;
+                if (gameState.tableau[i].some(card => !card.isFaceUp)) {
+                    hasHiddenCards = true;
+                }
+            }
+
+            // 2. 풀 더미와 오픈 덱이 완전히 비어 있는지 체크
+            let isStockEmpty = gameState.stock.length === 0 && gameState.waste.length === 0;
+
+            // 뒷면 카드가 전혀 없고, 대기 카드 덱도 비었으며, 아직 하단에 정리 안 된 카드가 남아 있다면 버튼 등장!
+            if (!hasHiddenCards && isStockEmpty && totalTableauCards > 0) {
+                document.getElementById('auto-complete-btn').style.display = 'block';
+            } else {
+                document.getElementById('auto-complete-btn').style.display = 'none';
+            }
+        }
+
+        // 🪄 [자동 정리 비동기 실행 루프]
+        async function triggerAutoComplete() {
+            if (isAutoCompleting) return;
+            isAutoCompleting = true;
+            document.getElementById('auto-complete-btn').style.display = 'none';
+
+            while (isAutoCompleting) {
+                let movedAny = false;
+
+                // 하단 7개 열의 맨 아래(마지막) 카드들을 한 번씩 검사
+                for (let i = 0; i < 7; i++) {
+                    let col = gameState.tableau[i];
+                    if (col.length === 0) continue;
+
+                    let card = col[col.length - 1];
+
+                    // 이 카드가 상단 홈 중 한 곳에 들어갈 수 있는지 탐색
+                    for (let f = 0; f < 4; f++) {
+                        let fStack = gameState.foundation[f];
+                        let canMove = false;
+
+                        if (fStack.length === 0 && card.value === 'A' && card.suit === SUITS[f]) {
+                            canMove = true;
+                        } else if (fStack.length > 0) {
+                            let topF = fStack[fStack.length - 1];
+                            if (card.suit === topF.suit && card.score === topF.score + 1) {
+                                canMove = true;
+                            }
+                        }
+
+                        if (canMove) {
+                            // 모션을 끝마칠 때까지 비동기(await) 대기 후 다음 카드로 진행
+                            await executeMotionMove('tableau', i, col.length - 1, 'foundation', f);
+                            movedAny = true;
+                            break;
+                        }
+                    }
+                    if (movedAny) break;
+                }
+
+                // 무한 루프 방지: 더 이상 위로 보낼 수 있는 유효한 카드가 발견되지 않으면 종료
+                if (!movedAny) {
+                    isAutoCompleting = false;
+                    break;
+                }
+            }
+        }
+
         function checkWinCondition() {
             for (let i = 0; i < 4; i++) {
                 if (gameState.foundation[i].length !== 13) return false;
             }
-            alert(`🎉 축하합니다! 완벽하게 클리어하셨습니다!`);
+            // 자동 정리 도중 연속으로 얼럿창이 발생하지 않도록 플래그 제어
+            isAutoCompleting = false;
+            document.getElementById('auto-complete-btn').style.display = 'none';
+            setTimeout(() => {
+                alert(`🎉 축하합니다! 완벽하게 클리어하셨습니다!`);
+            }, 100);
             return true;
         }
 
-        // 화면 회전(가로/세로 전환)이나 리사이즈 시 카드가 어긋나지 않도록 실시간 좌표 리스너 적용
         window.addEventListener('resize', renderBoard);
 
         initGame();
