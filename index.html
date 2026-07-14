@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Arcade Center</title>
+    <style>
+        /* 모든 요소에 부드러운 테마 전환 트랜지션 적용 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+        }
+
+        /* -----------------------------------------
+           1. 라이트 네온 테마 변수
+        ----------------------------------------- */
+        :root {
+            --bg-color: #f1f2f6;
+            --text-color: #2f3542;
+            --sub-text: #747d8c;
+            --panel-bg: rgba(255, 255, 255, 0.85);
+            --card-bg: #ffffff;
+            --card-border: #e4e7eb;
+            --neon-accent: #0081ff;
+            --neon-glow: rgba(0, 129, 255, 0.25);
+            --title-gradient: linear-gradient(45deg, #0081ff, #00c6ff);
+            --theme-btn-bg: #ffffff;
+        }
+
+        /* -----------------------------------------
+           2. 다크 네온 테마 변수 (기본값 추천)
+        ----------------------------------------- */
+        html.dark-theme {
+            --bg-color: #0b0f19;
+            --text-color: #ffffff;
+            --sub-text: #94a3b8;
+            --panel-bg: rgba(22, 31, 48, 0.5);
+            --card-bg: #111827;
+            --card-border: #1f2937;
+            --neon-accent: #00f2fe;
+            --neon-glow: rgba(0, 242, 254, 0.4);
+            --title-gradient: linear-gradient(45deg, #00f2fe, #4facfe);
+            --theme-btn-bg: #1f2937;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 3rem 1.5rem;
+            position: relative;
+        }
+
+        /* 우측 상단 수동 테마 조절 토글 버튼 */
+        #theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--theme-btn-bg);
+            border: 1px solid var(--card-border);
+            color: var(--text-color);
+            padding: 10px 16px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 10;
+        }
+        #theme-toggle:hover {
+            transform: translateY(-2px);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        header h1 {
+            font-size: 3rem;
+            font-weight: 900;
+            letter-spacing: 3px;
+            background: var(--title-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        header p {
+            color: var(--sub-text);
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        /* 게임 선택 카드 그리드 컨테이너 */
+        .game-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2.5rem;
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        /* 게임 카드 프리미엄 디자인 */
+        .game-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 2.5rem 2rem;
+            text-align: center;
+            text-decoration: none;
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 카드 마우스 호버 화려한 이펙트 */
+        .game-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--neon-accent);
+            box-shadow: 0 15px 35px var(--neon-glow);
+        }
+
+        /* 호버 시 내부 아이콘 애니메이션 */
+        .game-card:hover .game-icon {
+            transform: scale(1.15) rotate(5deg);
+        }
+
+        .game-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            transition: transform 0.3s ease;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+        }
+
+        .game-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 0.8rem;
+        }
+
+        .game-desc {
+            font-size: 0.95rem;
+            color: var(--sub-text);
+            line-height: 1.5;
+            word-break: keep-all;
+        }
+
+        /* 장식용 네온 바텀 라인 */
+        .game-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--title-gradient);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .game-card:hover::after {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 상단 테마 토글 버튼 -->
+    <button id="theme-toggle" onclick="toggleTheme()">☀️ 라이트</button>
+
+    <header>
+        <h1>My Arcade</h1>
+        <p>원하는 미니게임을 선택하여 실행하세요</p>
+    </header>
+
+    <!-- 게임 카드가 정렬되는 본문 그리드 영역 -->
+    <main class="game-container">
+        
+        <!-- 1. 지뢰찾기 게임 카드 (제공하신 폴더 링크 세팅) -->
+        <a href="games/minesweeper/minesweeper.html" class="game-card">
+            <div class="game-icon">💣</div>
+            <div class="game-title">MINESWEEPER</div>
+            <div class="game-desc">지뢰찾기를 즐겨보세요.</div>
+        </a>
+
+        <!-- 2. 추후 추가될 다른 게임 예시 (주석을 풀거나 복사해서 확장하세요) -->
+        <!--
+        <a href="games/tetris/tetris.html" class="game-card">
+            <div class="game-icon">🧱</div>
+            <div class="game-title">TETRIS PRO</div>
+            <div class="game-desc">낙하하는 블록들을 빈틈없이 조립하여 한 번에 라인을 클리어하세요!</div>
+        </a>
+        -->
+
+    </main>
+
+    <script>
+        const themeToggleBtn = document.getElementById('theme-toggle');
+
+        /* -----------------------------------------
+           🌗 지뢰찾기에서 적용된 수동/자동 테마 관리 이식
+        ----------------------------------------- */
+        function initTheme() {
+            // 1. 이전에 브라우저에 저장된 테마 쿠키가 있는지 확인
+            const savedTheme = localStorage.getItem('arcade-theme');
+            
+            if (savedTheme) {
+                if (savedTheme === 'dark') {
+                    document.documentElement.classList.add('dark-theme');
+                    themeToggleBtn.innerText = '🌙 다크';
+                } else {
+                    document.documentElement.classList.remove('dark-theme');
+                    themeToggleBtn.innerText = '☀️ 라이트';
+                }
+            } else {
+                // 2. 저장된 값이 없다면 유저의 운영체제(윈도우/맥/모바일) 시스템 테마 감지
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (prefersDark) {
+                    document.documentElement.classList.add('dark-theme');
+                    themeToggleBtn.innerText = '🌙 다크';
+                } else {
+                    document.documentElement.classList.remove('dark-theme');
+                    themeToggleBtn.innerText = '☀️ 라이트';
+                }
+            }
+        }
+
+        // 버튼을 누를 때마다 실행되는 테마 토글 함수
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark-theme');
+            if (isDark) {
+                themeToggleBtn.innerText = '🌙 다크';
+                localStorage.setItem('arcade-theme', 'dark');
+            } else {
+                themeToggleBtn.innerText = '☀️ 라이트';
+                localStorage.setItem('arcade-theme', 'light');
+            }
+        }
+
+        // 웹페이지 로드 시 테마 초기화 진행
+        initTheme();
+    </script>
+</body>
+</html>

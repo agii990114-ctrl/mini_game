@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>테마 직접 선택 지뢰찾기 PRO</title>
+    <style>
+        * {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            box-sizing: border-box;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        /* -----------------------------------------
+           1. 라이트 모드 테마 변수 (기본값)
+        ----------------------------------------- */
+        :root {
+            --bg-color: #f5f6fa;
+            --text-color: #2f3542;
+            --accent-gradient: linear-gradient(45deg, #0081ff, #00c6ff);
+            --accent-color: #0081ff;
+            --panel-bg: #ffffff;
+            --panel-border: #dcdde1;
+            --board-bg: #dcdde1;
+            --board-border: #ced6e0;
+            --cell-bg: #f1f2f6;
+            --cell-border: rgba(0, 0, 0, 0.05);
+            --cell-revealed: #ced6e0;
+            --cell-mine: #ff4757;
+            --cell-flag: #ffa502;
+            --btn-diff-bg: #e4e7eb;
+            --btn-diff-text: #57606f;
+            --btn-diff-border: #ced6e0;
+            --tip-color: #747d8c;
+            --reset-btn-gradient: linear-gradient(45deg, #ff4757, #ff6b81);
+            --reset-shadow: rgba(255, 71, 87, 0.4);
+            --theme-btn-bg: #e4e7eb;
+        }
+
+        /* -----------------------------------------
+           2. 다크 모드 클래스 부여 시 적용될 변수
+        ----------------------------------------- */
+        html.dark-theme {
+            --bg-color: #0e121a;
+            --text-color: #ffffff;
+            --accent-gradient: linear-gradient(45deg, #00f2fe, #4facfe);
+            --accent-color: #00f2fe;
+            --panel-bg: #161f30;
+            --panel-border: #22314d;
+            --board-bg: #161f30;
+            --board-border: #22314d;
+            --cell-bg: #22314d;
+            --cell-border: rgba(255, 255, 255, 0.05);
+            --cell-revealed: #111823;
+            --cell-mine: #ff4757;
+            --cell-flag: #ffa502;
+            --btn-diff-bg: #1a2233;
+            --btn-diff-text: #8f9cae;
+            --btn-diff-border: #2c3a57;
+            --tip-color: #576574;
+            --reset-btn-gradient: linear-gradient(45deg, #ff4757, #ff6b81);
+            --reset-shadow: rgba(255, 71, 87, 0.4);
+            --theme-btn-bg: #1a2233;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 우측 상단 수동 테마 조절 토글 버튼 */
+        #theme-toggle {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: var(--theme-btn-bg);
+            border: 1px solid var(--panel-border);
+            color: var(--text-color);
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            z-index: 10;
+        }
+
+        h1 {
+            margin: 10px 0 10px 0;
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* 컨트롤러 영역 */
+        .controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .btn-diff {
+            background: var(--btn-diff-bg);
+            color: var(--btn-diff-text);
+            border: 2px solid var(--btn-diff-border);
+            padding: 6px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+
+        .btn-diff.active {
+            background: var(--accent-gradient);
+            color: #fff;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+            
+        }
+
+        /* 정보 패널 */
+        #info-panel {
+            margin-bottom: 15px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--accent-color);
+            background: var(--panel-bg);
+            padding: 8px 20px;
+            border-radius: 30px;
+            border: 1px solid var(--panel-border);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* 보드 레이아웃 */
+        #board-scale-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 15px;
+            perspective: 1000px;
+        }
+
+        #board {
+            display: grid;
+            gap: 3px;
+            background-color: var(--board-bg);
+            padding: 8px;
+            border-radius: 12px;
+            border: 2px solid var(--board-border);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            transform-origin: center center;
+            transition: transform 0.2s ease, background-color 0.3s, border-color 0.3s;
+        }
+
+        /* 셀 디자인 */
+        .cell {
+            width: 36px;
+            height: 36px;
+            background: var(--cell-bg);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.1rem;
+            cursor: pointer;
+            box-shadow: inset 0 2px 4px var(--cell-border);
+        }
+
+        /* 열린 칸 스타일 */
+        .cell.revealed {
+            background: var(--cell-revealed);
+            box-shadow: none;
+        }
+
+        /* 지뢰 / 깃발 스타일 */
+        .cell.mine {
+            background: var(--cell-mine);
+            box-shadow: 0 0 15px var(--cell-mine);
+        }
+
+        .cell.flag {
+            background: var(--cell-flag);
+            box-shadow: 0 0 10px rgba(255, 165, 2, 0.5);
+        }
+
+        /* 숫자별 색상 */
+        .c-1 { color: #0984e3; }
+        .c-2 { color: #2ecc71; }
+        .c-3 { color: #e74c3c; }
+        .c-4 { color: #8e44ad; }
+        .c-5 { color: #fd79a8; }
+        .c-6 { color: #e1b12c; }
+
+        /* 하단 가이드 및 버튼 */
+        #tip {
+            font-size: 0.8rem;
+            color: var(--tip-color);
+            margin-bottom: 10px;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        #reset-btn {
+            padding: 10px 30px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            background: var(--reset-btn-gradient);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px var(--reset-shadow);
+        }
+    </style>
+</head>
+<body>
+
+    <button id="theme-toggle" onclick="toggleTheme()">☀️ 라이트</button>
+
+    <h1>MINESWEEPER</h1>
+    
+    <div class="controls">
+        <button class="btn-diff active" onclick="changeDifficulty('easy', this)">하 (9x9)</button>
+        <button class="btn-diff" onclick="changeDifficulty('medium', this)">중 (12x12)</button>
+        <button class="btn-diff" onclick="changeDifficulty('hard', this)">상 (15x15)</button>
+    </div>
+
+    <div id="info-panel">지뢰: <span id="mine-count">10</span></div>
+    
+    <div id="board-scale-container">
+        <div id="board"></div>
+    </div>
+
+    <p id="tip">
+        📱 모바일: <b>길게 누르면 깃발</b> | 💻 PC: <b>우클릭이 깃발</b>
+    </p>
+    <button id="reset-btn" onclick="initGame()">Restart</button>
+
+    <script>
+        const DIFF_SETTINGS = {
+            easy: { size: 9, mines: 10 },
+            medium: { size: 12, mines: 20 },
+            hard: { size: 15, mines: 35 }
+        };
+
+        let currentDiff = 'easy';
+        let boardSize = DIFF_SETTINGS.easy.size;
+        let mineCount = DIFF_SETTINGS.easy.mines;
+
+        let board = [];
+        let revealedCount = 0;
+        let gameOver = false;
+        let flags = 0;
+
+        const boardElement = document.getElementById('board');
+        const mineCountElement = document.getElementById('mine-count');
+        const container = document.getElementById('board-scale-container');
+        const themeToggleBtn = document.getElementById('theme-toggle');
+
+        /* -----------------------------------------
+           🌗 수동 테마 선택 및 브라우저 저장 로직
+        ----------------------------------------- */
+        function initTheme() {
+            // 이전에 저장된 사용자의 설정이 있는지 확인
+            const savedTheme = localStorage.getItem('theme');
+            
+            if (savedTheme) {
+                // 저장된 설정대로 세팅
+                if (savedTheme === 'dark') {
+                    document.documentElement.classList.add('dark-theme');
+                    themeToggleBtn.innerText = '🌙 다크';
+                } else {
+                    document.documentElement.classList.remove('dark-theme');
+                    themeToggleBtn.innerText = '☀️ 라이트';
+                }
+            } else {
+                // 저장된 설정이 없다면 기기의 기본 시스템 설정을 확인
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (prefersDark) {
+                    document.documentElement.classList.add('dark-theme');
+                    themeToggleBtn.innerText = '🌙 다크';
+                } else {
+                    document.documentElement.classList.remove('dark-theme');
+                    themeToggleBtn.innerText = '☀️ 라이트';
+                }
+            }
+        }
+
+        // 테마 토글 함수
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark-theme');
+            if (isDark) {
+                themeToggleBtn.innerText = '🌙 다크';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                themeToggleBtn.innerText = '☀️ 라이트';
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        function changeDifficulty(diff, buttonEl) {
+            document.querySelectorAll('.btn-diff').forEach(btn => btn.classList.remove('active'));
+            buttonEl.classList.add('active');
+
+            currentDiff = diff;
+            boardSize = DIFF_SETTINGS[diff].size;
+            mineCount = DIFF_SETTINGS[diff].mines;
+            initGame();
+        }
+
+        function resizeBoard() {
+            if (!boardElement) return;
+
+            const padding = 20;
+            const containerWidth = container.clientWidth - padding;
+            const originalBoardWidth = (boardSize * 36) + ((boardSize - 1) * 3) + 16;
+
+            if (originalBoardWidth > containerWidth) {
+                const scale = containerWidth / originalBoardWidth;
+                boardElement.style.transform = `scale(${scale})`;
+                container.style.height = `${originalBoardWidth * scale}px`;
+            } else {
+                boardElement.style.transform = `scale(1)`;
+                container.style.height = 'auto';
+            }
+        }
+
+        function initGame() {
+            boardElement.innerHTML = '';
+            
+            boardElement.style.gridTemplateColumns = `repeat(${boardSize}, 36px)`;
+            boardElement.style.gridTemplateRows = `repeat(${boardSize}, 36px)`;
+            
+            board = [];
+            revealedCount = 0;
+            gameOver = false;
+            flags = 0;
+            mineCountElement.innerText = mineCount;
+
+            for (let r = 0; r < boardSize; r++) {
+                let row = [];
+                for (let c = 0; c < boardSize; c++) {
+                    row.push({ r, c, isMine: false, isRevealed: false, isFlagged: false, neighborMines: 0 });
+                }
+                board.push(row);
+            }
+
+            let minesPlaced = 0;
+            while (minesPlaced < mineCount) {
+                let r = Math.floor(Math.random() * boardSize);
+                let c = Math.floor(Math.random() * boardSize);
+                if (!board[r][c].isMine) {
+                    board[r][c].isMine = true;
+                    minesPlaced++;
+                }
+            }
+
+            for (let r = 0; r < boardSize; r++) {
+                for (let c = 0; c < boardSize; c++) {
+                    if (board[r][c].isMine) continue;
+                    let count = 0;
+                    for (let dr = -1; dr <= 1; dr++) {
+                        for (let dc = -1; dc <= 1; dc++) {
+                            let nr = r + dr, nc = c + dc;
+                            if (nr >= 0 && nr < boardSize && nc >= 0 && nc < boardSize) {
+                                if (board[nr][nc].isMine) count++;
+                            }
+                        }
+                    }
+                    board[r][c].neighborMines = count;
+                }
+            }
+
+            for (let r = 0; r < boardSize; r++) {
+                for (let c = 0; c < boardSize; c++) {
+                    const cellDom = document.createElement('div');
+                    cellDom.classList.add('cell');
+
+                    let touchTimer = null;
+                    let isLongPress = false;
+
+                    const startEvent = (e) => {
+                        if (gameOver) return;
+                        isLongPress = false;
+                        touchTimer = setTimeout(() => {
+                            isLongPress = true;
+                            handleRightClick(r, c);
+                        }, 500);
+                    };
+
+                    const endEvent = (e) => {
+                        clearTimeout(touchTimer);
+                        if (gameOver) return;
+                        if (!isLongPress && e.button !== 2) {
+                            handleLeftClick(r, c);
+                        }
+                    };
+
+                    const cancelEvent = () => clearTimeout(touchTimer);
+
+                    cellDom.addEventListener('mousedown', startEvent);
+                    cellDom.addEventListener('mouseup', endEvent);
+                    cellDom.addEventListener('touchstart', (e) => { e.preventDefault(); startEvent(e); });
+                    cellDom.addEventListener('touchend', (e) => { e.preventDefault(); endEvent(e); });
+                    cellDom.addEventListener('touchmove', cancelEvent);
+                    cellDom.addEventListener('contextmenu', (e) => { e.preventDefault(); handleRightClick(r, c); });
+
+                    boardElement.appendChild(cellDom);
+                }
+            }
+
+            resizeBoard();
+        }
+
+        function handleLeftClick(r, c) {
+            if (gameOver) return;
+            let cell = board[r][c];
+            if (cell.isRevealed || cell.isFlagged) return;
+            revealCell(r, c);
+        }
+
+        function revealCell(r, c) {
+            let cell = board[r][c];
+            cell.isRevealed = true;
+            revealedCount++;
+
+            const cellDom = boardElement.children[r * boardSize + c];
+            cellDom.classList.add('revealed');
+
+            if (cell.isMine) {
+                cellDom.classList.add('mine');
+                cellDom.innerText = '💣';
+                endGame(false);
+                return;
+            }
+
+            if (cell.neighborMines > 0) {
+                cellDom.innerText = cell.neighborMines;
+                cellDom.classList.add(`c-${cell.neighborMines}`);
+            } else {
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        let nr = r + dr, nc = c + dc;
+                        if (nr >= 0 && nr < boardSize && nc >= 0 && nc < boardSize) {
+                            if (!board[nr][nc].isRevealed && !board[nr][nc].isFlagged) {
+                                revealCell(nr, nc);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (revealedCount === (boardSize * boardSize) - mineCount) {
+                endGame(true);
+            }
+        }
+
+        function handleRightClick(r, c) {
+            if (gameOver) return;
+            let cell = board[r][c];
+            if (cell.isRevealed) return;
+
+            const cellDom = boardElement.children[r * boardSize + c];
+
+            if (!cell.isFlagged) {
+                cell.isFlagged = true;
+                flags++;
+                cellDom.classList.add('flag');
+                cellDom.innerText = '🚩';
+            } else {
+                cell.isFlagged = false;
+                flags--;
+                cellDom.classList.remove('flag');
+                cellDom.innerText = '';
+            }
+            mineCountElement.innerText = mineCount - flags;
+        }
+
+        function endGame(isWin) {
+            gameOver = true;
+            setTimeout(() => {
+                if (isWin) alert('🎉 완벽합니다! 모든 지뢰를 무력화했습니다!');
+                else {
+                    alert('💥 미션 실패! 지뢰가 폭발했습니다.');
+                    revealAllMines();
+                }
+            }, 100);
+        }
+
+        function revealAllMines() {
+            for (let r = 0; r < boardSize; r++) {
+                for (let c = 0; c < boardSize; c++) {
+                    if (board[r][c].isMine) {
+                        const cellDom = boardElement.children[r * boardSize + c];
+                        cellDom.classList.add('revealed', 'mine');
+                        cellDom.innerText = '💣';
+                    }
+                }
+            }
+        }
+
+        window.addEventListener('resize', resizeBoard);
+        
+        // 테마 초기화 후 게임 구동 시작
+        initTheme();
+        initGame();
+    </script>
+</body>
+</html>
