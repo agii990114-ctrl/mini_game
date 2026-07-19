@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Pitch & Strike - Number Baseball</title>
+    <title>Number Baseball</title>
+    <link rel="stylesheet" href="../css/common.css">
     <style>
         * {
             box-sizing: border-box;
@@ -594,6 +595,7 @@
                 margin: 6px auto;
             }
         }
+
     </style>
 </head>
 
@@ -602,7 +604,12 @@
     <div class="overlay" id="bg-overlay" onclick="cancelSettings()"></div>
 
     <header>
-        <h1>⚾ PITCH &amp; STRIKE</h1>
+        <div class="top_box">
+            <a href="../../index.html" class="home_ic">
+                ⬅
+            </a>
+            <h1>NUMBER BASEBALL</h1>
+        </div>
         <div class="header-btns">
             <button class="btn-icon" id="theme-toggle-btn" onclick="toggleTheme()">🌙 다크</button>
             <button class="btn-icon" onclick="openSettings()">⚙️ 설정</button>
