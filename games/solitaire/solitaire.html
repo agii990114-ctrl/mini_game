@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Solitaire Pro - Zero Scroll Edition</title>
+    <title>Solitaire Pro - Dynamic Deck Edition</title>
     <style>
         :root {
-            /* 뷰포트 크기에 맞춰 카드의 동적 크기 계산 */
             --card-width: 12.5vw;
             --card-height: 18vw;
             --card-gap: 1.5vw;
@@ -32,10 +31,10 @@
 
         html, body {
             width: 100%;
-            height: 100dvh; /* 모바일 동적 주소창 포함 높이 */
-            overflow: hidden; /* 스크롤바 생성 절대 방지 */
+            height: 100dvh;
+            overflow: hidden;
             background-color: #1b5e20;
-            touch-action: none; /* 모바일 드래그 시 화면 밀림 방지 */
+            touch-action: none;
         }
 
         body {
@@ -44,7 +43,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: space-between; /* 전체 요소를 상하 균등 배치 */
+            justify-content: space-between;
             padding: 10px 10px calc(10px + env(safe-area-inset-bottom)) 10px;
         }
 
@@ -81,7 +80,7 @@
             gap: var(--card-gap);
             position: relative;
             flex-grow: 1;
-            justify-content: center; /* 상하 균형 잡기 */
+            justify-content: center;
         }
 
         .top-region {
@@ -95,11 +94,29 @@
             gap: var(--card-gap);
         }
 
+        /* 개선사항: 패가 쌓일 때 왼쪽으로 늘어나며 덱을 밀어내는 동적 컨테이너 */
+        .left-decks {
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-end;
+            position: relative;
+        }
+
+        /* 초기에는 카드 1장 폭이었다가 카드가 채워지면 자바스크립트가 자동으로 width를 넓힙니다 */
+        #waste-slot-container {
+            position: relative;
+            width: var(--card-width);
+            max-width: var(--max-card-width);
+            height: var(--card-height);
+            max-height: var(--max-card-height);
+            transition: width 0.2s ease, max-width 0.2s ease;
+        }
+
         .bottom-region {
             display: flex;
             justify-content: space-between;
             width: 100%;
-            height: 58vh; /* 하단 영역 높이를 고정하여 스크롤 오버플로우 제한 */
+            height: 58vh;
             position: relative;
         }
 
@@ -192,19 +209,6 @@
             cursor: not-allowed;
             box-shadow: none;
         }
-
-        .btn-magic {
-            background: linear-gradient(135deg, #ffd700, #ff8c00);
-            color: #000000;
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
-            animation: pulse 1.5s infinite alternate;
-            display: none;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
-            100% { transform: scale(1.05); box-shadow: 0 0 20px rgba(255, 215, 0, 0.9); }
-        }
     </style>
 </head>
 <body>
@@ -218,15 +222,19 @@
 
     <div id="solitaire-board">
         <div class="top-region">
-            <div class="left-decks">
-                <div id="stock-slot" class="card-slot" onclick="drawFromStock()"></div>
-                <div id="waste-slot" class="card-slot"></div>
-            </div>
+            <!-- 정리 영역 (좌측) -->
             <div class="right-decks">
                 <div id="foundation-0" class="card-slot foundation" data-suit="♠"></div>
                 <div id="foundation-1" class="card-slot foundation" data-suit="♥"></div>
                 <div id="foundation-2" class="card-slot foundation" data-suit="◆"></div>
                 <div id="foundation-3" class="card-slot foundation" data-suit="♣"></div>
+            </div>
+            <!-- 덱 영역 (우측) -->
+            <div class="left-decks">
+                <div id="waste-slot-container">
+                    <div id="waste-slot" style="position: relative; width: 100%; height: 100%;"></div>
+                </div>
+                <div id="stock-slot" class="card-slot" onclick="drawFromStock()"></div>
             </div>
         </div>
 
@@ -244,7 +252,6 @@
     <div id="controls">
         <button class="btn" onclick="initGame()">새 게임</button>
         <button id="undo-btn" class="btn" onclick="undo()" disabled>↩️ 되돌리기</button>
-        <button id="auto-complete-btn" class="btn btn-magic" onclick="triggerAutoComplete()">🪄 자동 정리</button>
     </div>
 
     <script>
@@ -256,16 +263,22 @@
         let gameState = { stock: [], waste: [], foundation: [[], [], [], []], tableau: [[], [], [], [], [], [], []] };
         let moves = 0;
         let isAnimating = false;
-        let isAutoCompleting = false;
+        let isAutoCompleting = false; 
         let historyStack = [];
+        let lastUserDemotedCardId = null;
 
-        // 화면 크기에 따른 카드 세로 간격(겹침 정도) 동적 연산
         function getCardGap() {
             if (window.innerWidth < 600) {
-                // 모바일 세로 길이(vh)가 유독 짧은 기기 대응을 위해 세로 비율 반영
                 return Math.min(window.innerWidth * 0.035, window.innerHeight * 0.022);
             }
-            return 18; // PC 기본값
+            return 18;
+        }
+
+        function getWasteCardGap() {
+            if (window.innerWidth < 600) {
+                return window.innerWidth * 0.035;
+            }
+            return 20;
         }
 
         function buildDeck() {
@@ -288,9 +301,9 @@
             moves = 0;
             isAnimating = false;
             isAutoCompleting = false;
+            lastUserDemotedCardId = null;
             historyStack = [];
             document.getElementById('move-count').innerText = moves;
-            document.getElementById('auto-complete-btn').style.display = 'none';
             updateUndoButtonState();
             buildDeck();
             shuffle(deck);
@@ -312,7 +325,8 @@
             const stateCopy = JSON.parse(JSON.stringify(gameState));
             historyStack.push({
                 gameState: stateCopy,
-                moves: moves
+                moves: moves,
+                lastUserDemotedCardId: lastUserDemotedCardId
             });
             updateUndoButtonState();
         }
@@ -323,6 +337,7 @@
             const previousState = historyStack.pop();
             gameState = previousState.gameState;
             moves = previousState.moves;
+            lastUserDemotedCardId = previousState.lastUserDemotedCardId;
 
             document.getElementById('move-count').innerText = moves;
             updateUndoButtonState();
@@ -343,6 +358,7 @@
             if (gameState.stock.length === 0 && gameState.waste.length === 0) return;
 
             saveToHistory();
+            lastUserDemotedCardId = null;
 
             if (gameState.stock.length === 0) {
                 gameState.stock = gameState.waste.reverse().map(card => { card.isFaceUp = false; return card; });
@@ -362,11 +378,17 @@
             tempCard.className = 'card back moving';
             stockSlot.appendChild(tempCard);
 
+            // 애니메이션 시작 시 미리 컨테이너 폭 확장 연출 설정
+            const currentWasteCount = gameState.waste.length + 1;
+            const targetVisibleIdx = Math.min(currentWasteCount, 3) - 1;
+            updateWasteContainerWidth(currentWasteCount);
+
             const startRect = stockSlot.getBoundingClientRect();
             const endRect = wasteSlot.getBoundingClientRect();
-
             tempCard.getBoundingClientRect();
-            tempCard.style.transform = `translate(${endRect.left - startRect.left}px, ${endRect.top - startRect.top}px)`;
+            
+            const offsetLeft = targetVisibleIdx * getWasteCardGap();
+            tempCard.style.transform = `translate(${(endRect.left + offsetLeft) - startRect.left}px, ${endRect.top - startRect.top}px)`;
 
             setTimeout(() => {
                 let card = gameState.stock.pop();
@@ -376,7 +398,23 @@
                 document.getElementById('move-count').innerText = moves;
                 isAnimating = false;
                 renderBoard();
+                triggerAutoCompleteLoop();
             }, 230);
+        }
+
+        // 가시적인 카드 장수에 맞춰 컨테이너 가로폭을 동적으로 변경하는 함수
+        function updateWasteContainerWidth(count) {
+            const container = document.getElementById('waste-slot-container');
+            const visibleCount = Math.min(count, 3);
+            
+            if (visibleCount <= 1) {
+                container.style.width = 'var(--card-width)';
+                container.style.maxWidth = 'var(--max-card-width)';
+            } else {
+                const extraGap = (visibleCount - 1) * getWasteCardGap();
+                container.style.width = `calc(var(--card-width) + ${extraGap}px)`;
+                container.style.maxWidth = `calc(var(--max-card-width) + ${extraGap}px)`;
+            }
         }
 
         function renderBoard() {
@@ -387,13 +425,45 @@
                 cardDiv.className = 'card back';
                 stockSlot.appendChild(cardDiv);
             } else {
-                stockSlot.innerHTML = '<span style="position:absolute; top:40%; left:12%; color:rgba(255,255,255,0.25); font-size: calc(0.4rem + 1vw); font-weight:bold; width:100%; text-align:center;">RELOAD</span>';
+                stockSlot.innerHTML = '<span style="position:absolute; top:40%; left:0; color:rgba(255,255,255,0.25); font-size: calc(0.4rem + 1vw); font-weight:bold; width:100%; text-align:center;">RELOAD</span>';
             }
 
             const wasteSlot = document.getElementById('waste-slot');
             wasteSlot.innerHTML = '';
+            
+            let baseSlot = document.createElement('div');
+            baseSlot.className = 'card-slot';
+            baseSlot.style.position = 'absolute';
+            baseSlot.style.left = '0';
+            baseSlot.style.top = '0';
+            baseSlot.style.zIndex = '0';
+            wasteSlot.appendChild(baseSlot);
+
+            // 현재 카드 장수에 맞추어 가로 영역 가변 조절
+            updateWasteContainerWidth(gameState.waste.length);
+
             if (gameState.waste.length > 0) {
-                wasteSlot.appendChild(createCardDOM(gameState.waste[gameState.waste.length - 1], 'waste'));
+                const visibleCount = Math.min(gameState.waste.length, 3);
+                const startIndex = gameState.waste.length - visibleCount;
+                const hGap = getWasteCardGap();
+
+                for (let i = 0; i < visibleCount; i++) {
+                    const globalIdx = startIndex + i;
+                    const card = gameState.waste[globalIdx];
+                    const isTopCard = (globalIdx === gameState.waste.length - 1);
+                    
+                    let cardDOM = createCardDOM(card, 'waste', 0, globalIdx);
+                    cardDOM.style.position = 'absolute';
+                    cardDOM.style.left = `${i * hGap}px`;
+                    cardDOM.style.top = '0';
+                    cardDOM.style.zIndex = i + 1;
+                    
+                    if (!isTopCard) {
+                        cardDOM.onclick = null;
+                        cardDOM.style.cursor = 'default';
+                    }
+                    wasteSlot.appendChild(cardDOM);
+                }
             }
 
             for (let i = 0; i < 4; i++) {
@@ -419,9 +489,7 @@
                 });
             }
 
-            if (!checkWinCondition() && !isAutoCompleting) {
-                checkAutoCompleteAvailability();
-            }
+            checkWinCondition();
             updateUndoButtonState();
         }
 
@@ -454,12 +522,16 @@
                     let fStack = gameState.foundation[i];
                     if (fStack.length === 0 && card.value === 'A' && card.suit === SUITS[i]) {
                         saveToHistory();
-                        executeMotionMove(source, zoneIdx, cardIdx, 'foundation', i); return;
+                        lastUserDemotedCardId = null; 
+                        executeMotionMove(source, zoneIdx, cardIdx, 'foundation', i).then(() => triggerAutoCompleteLoop()); 
+                        return;
                     } else if (fStack.length > 0) {
                         let topF = fStack[fStack.length - 1];
                         if (card.suit === topF.suit && card.score === topF.score + 1) {
                             saveToHistory();
-                            executeMotionMove(source, zoneIdx, cardIdx, 'foundation', i); return;
+                            lastUserDemotedCardId = null;
+                            executeMotionMove(source, zoneIdx, cardIdx, 'foundation', i).then(() => triggerAutoCompleteLoop()); 
+                            return;
                         }
                     }
                 }
@@ -470,12 +542,22 @@
                 if (tStack.length === 0 && card.value === 'K') {
                     if (source === 'tableau' && cardIdx === 0) continue;
                     saveToHistory();
-                    executeMotionMove(source, zoneIdx, cardIdx, 'tableau', i); return;
+                    
+                    if (source === 'foundation') lastUserDemotedCardId = card.id;
+                    else lastUserDemotedCardId = null;
+
+                    executeMotionMove(source, zoneIdx, cardIdx, 'tableau', i).then(() => triggerAutoCompleteLoop()); 
+                    return;
                 } else if (tStack.length > 0) {
                     let topT = tStack[tStack.length - 1];
                     if (card.color !== topT.color && card.score === topT.score - 1) {
                         saveToHistory();
-                        executeMotionMove(source, zoneIdx, cardIdx, 'tableau', i); return;
+                        
+                        if (source === 'foundation') lastUserDemotedCardId = card.id;
+                        else lastUserDemotedCardId = null;
+
+                        executeMotionMove(source, zoneIdx, cardIdx, 'tableau', i).then(() => triggerAutoCompleteLoop()); 
+                        return;
                     }
                 }
             }
@@ -491,7 +573,9 @@
                     const children = Array.from(colDiv.children);
                     movingElements = children.slice(cardIdx);
                 } else if (fromZone === 'waste') {
-                    movingElements.push(document.getElementById('waste-slot').firstElementChild);
+                    const wasteSlot = document.getElementById('waste-slot');
+                    const cards = wasteSlot.querySelectorAll('.card');
+                    if (cards.length > 0) movingElements.push(cards[cards.length - 1]);
                 } else if (fromZone === 'foundation') {
                     movingElements.push(document.getElementById(`foundation-${fromIdx}`).firstElementChild);
                 }
@@ -558,39 +642,18 @@
             renderBoard();
         }
 
-        function checkAutoCompleteAvailability() {
-            let hasHiddenCards = false;
-            let totalTableauCards = 0;
-            for (let i = 0; i < 7; i++) {
-                totalTableauCards += gameState.tableau[i].length;
-                if (gameState.tableau[i].some(card => !card.isFaceUp)) {
-                    hasHiddenCards = true;
-                }
-            }
-
-            let isStockEmpty = gameState.stock.length === 0 && gameState.waste.length === 0;
-
-            if (!hasHiddenCards && isStockEmpty && totalTableauCards > 0) {
-                document.getElementById('auto-complete-btn').style.display = 'block';
-            } else {
-                document.getElementById('auto-complete-btn').style.display = 'none';
-            }
-        }
-
-        async function triggerAutoComplete() {
+        async function triggerAutoCompleteLoop() {
             if (isAutoCompleting) return;
             isAutoCompleting = true;
-            document.getElementById('auto-complete-btn').style.display = 'none';
             updateUndoButtonState();
 
             while (isAutoCompleting) {
                 let movedAny = false;
 
-                for (let i = 0; i < 7; i++) {
-                    let col = gameState.tableau[i];
-                    if (col.length === 0) continue;
-
-                    let card = col[col.length - 1];
+                const tryMoveCard = async (card, zoneType, zoneIdx, cardIdx) => {
+                    if (lastUserDemotedCardId && card.id === lastUserDemotedCardId) {
+                        return false;
+                    }
 
                     for (let f = 0; f < 4; f++) {
                         let fStack = gameState.foundation[f];
@@ -607,12 +670,29 @@
 
                         if (canMove) {
                             saveToHistory();
-                            await executeMotionMove('tableau', i, col.length - 1, 'foundation', f);
-                            movedAny = true;
-                            break;
+                            await executeMotionMove(zoneType, zoneIdx, cardIdx, 'foundation', f);
+                            return true;
                         }
                     }
-                    if (movedAny) break;
+                    return false;
+                };
+
+                for (let i = 0; i < 7; i++) {
+                    let col = gameState.tableau[i];
+                    if (col.length === 0) continue;
+                    let card = col[col.length - 1];
+
+                    if (await tryMoveCard(card, 'tableau', i, col.length - 1)) {
+                        movedAny = true;
+                        break;
+                    }
+                }
+
+                if (!movedAny && gameState.waste.length > 0) {
+                    let card = gameState.waste[gameState.waste.length - 1];
+                    if (await tryMoveCard(card, 'waste', 0, gameState.waste.length - 1)) {
+                        movedAny = true;
+                    }
                 }
 
                 if (!movedAny) {
@@ -628,14 +708,12 @@
                 if (gameState.foundation[i].length !== 13) return false;
             }
             isAutoCompleting = false;
-            document.getElementById('auto-complete-btn').style.display = 'none';
             setTimeout(() => {
                 alert(`🎉 축하합니다! 완벽하게 클리어하셨습니다!`);
             }, 100);
             return true;
         }
 
-        // 모바일 사파리/크롬 등 브라우저 자체 드래그 및 고무줄 튕김 효과 방지
         document.addEventListener('touchmove', function(e) {
             e.preventDefault();
         }, { passive: false });
