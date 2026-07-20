@@ -313,7 +313,6 @@
             <button id="diff-hard" class="diff-btn" onclick="changeDifficulty('hard')">어려움</button>
         </div>
         <div id="score-board">
-            <!-- 클릭하여 틀린 횟수 한도를 설정할 수 있는 버튼 박스화 -->
             <div class="wrong-setting-box" onclick="setCustomMaxWrongs()">WRONGS: <span id="wrong-count">0 / 3</span> ⚙️</div>
             <div>TIME: <span id="game-time">00:00</span><span id="best-time" class="record-label">(-)</span></div>
         </div>
@@ -351,10 +350,11 @@
         
         let selectedCell = null;
         let wrongs = 0;
-        let maxWrongs = 3; // 기본값 3 설정
+        let maxWrongs = 3; 
         let timeElapsed = 0;
         let bestTime = Infinity;
         let timerInterval = null;
+        let isTimerRunning = false; // 타이머 가동 여부 플래그 추가
         
         let currentDifficulty = 'easy';
         let isMemoMode = false;
@@ -367,10 +367,9 @@
             [9, 6, 1, 5, 3, 7, 2, 8, 4], [2, 8, 7, 4, 1, 9, 6, 3, 5], [3, 4, 5, 2, 8, 6, 1, 7, 9]
         ];
 
-        // 유저 커스텀 최대 오답 수 설정 함수
         function setCustomMaxWrongs() {
             const input = prompt("허용할 최대 오답 제한 횟수를 입력하세요 (1 ~ 99):", maxWrongs);
-            if (input === null) return; // 취소 클릭 시 유지
+            if (input === null) return; 
 
             const parsed = parseInt(input, 10);
             if (!isNaN(parsed) && parsed > 0 && parsed < 100) {
@@ -378,7 +377,6 @@
                 document.getElementById('wrong-count').innerText = `${wrongs} / ${maxWrongs}`;
                 saveCurrentStateToStorage();
                 
-                // 설정 도중 이미 제한 횟수를 초과했는지 즉시 체크
                 if (wrongs >= maxWrongs) {
                     checkGameOver();
                 }
@@ -394,8 +392,9 @@
                 boardState,
                 initialMask,
                 wrongs,
-                maxWrongs, // 저장 필드에 포함
+                maxWrongs, 
                 timeElapsed,
+                isTimerRunning, // 플래그 저장하여 세션 복구 대비
                 memoState: memoState.map(row => row.map(set => Array.from(set)))
             };
             localStorage.setItem('sudoku_saved_session', JSON.stringify(stateObj));
@@ -412,8 +411,9 @@
                 boardState = stateObj.boardState;
                 initialMask = stateObj.initialMask;
                 wrongs = stateObj.wrongs;
-                maxWrongs = stateObj.maxWrongs !== undefined ? stateObj.maxWrongs : 3; // 기본 복구 룰링 보완
+                maxWrongs = stateObj.maxWrongs !== undefined ? stateObj.maxWrongs : 3; 
                 timeElapsed = stateObj.timeElapsed;
+                isTimerRunning = stateObj.isTimerRunning || false;
                 memoState = stateObj.memoState.map(row => row.map(arr => new Set(arr)));
                 return true;
             } catch (e) {
@@ -474,6 +474,7 @@
 
         function initGame(forceNew = false) {
             clearInterval(timerInterval);
+            timerInterval = null;
             selectedCell = null;
             isMemoMode = false;
             document.getElementById('memo-toggle').classList.remove('active');
@@ -486,7 +487,7 @@
             if (!hasSavedSession) {
                 wrongs = 0;
                 timeElapsed = 0;
-                // 세션 없이 아예 새 게임을 틀 때만 기입되어있던 유저 설정을 기억하거나 기본값으로 잡음
+                isTimerRunning = false; // 새 게임 시 타이머 대기 상태로 세팅
                 generateSudoku();
             }
 
@@ -499,11 +500,18 @@
             document.getElementById('best-time').innerText = formatTimeDisplay(bestTime);
 
             renderBoard();
-            startTimer();
+
+            // 이전 기록 복구 시 타이머가 이미 도는 중이었다면 이어서 시작, 새 게임이면 대기
+            if (hasSavedSession && isTimerRunning) {
+                startTimer();
+            }
+            
             if (!hasSavedSession) saveCurrentStateToStorage();
         }
 
         function startTimer() {
+            if (timerInterval) return; // 중복 실행 방지
+            isTimerRunning = true;
             timerInterval = setInterval(() => {
                 timeElapsed++;
                 drawTimer(timeElapsed, 'game-time');
@@ -588,6 +596,11 @@
             if (!selectedCell) return;
             const { row, col } = selectedCell;
 
+            // 첫 입력이 일어났을 때 타이머 작동 시작
+            if (!isTimerRunning) {
+                startTimer();
+            }
+
             if (isMemoMode && num !== 0) {
                 if (boardState[row][col] !== 0) return;
                 if (memoState[row][col].has(num)) {
@@ -625,6 +638,7 @@
 
         function checkGameOver() {
             clearInterval(timerInterval);
+            isTimerRunning = false;
             localStorage.removeItem('sudoku_saved_session');
             setTimeout(() => {
                 alert(`❌ 설정하신 ${maxWrongs}회 오답 제한을 초과하여 게임 오버되었습니다. 새 게임을 생성합니다.`);
@@ -640,6 +654,7 @@
             }
 
             clearInterval(timerInterval);
+            isTimerRunning = false;
             localStorage.removeItem('sudoku_saved_session');
             let isNewRecord = false;
 
