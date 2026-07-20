@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Solitaire Pro - Dynamic Deck Edition</title>
+    <title>Solitaire Pro - Record Edition</title>
     <link rel="stylesheet" href="../css/common.css">
     <style>
         :root {
@@ -68,12 +68,19 @@
 
         #score-board {
             display: flex;
-            gap: 20px;
-            font-size: 0.85rem;
+            gap: 15px;
+            font-size: 0.8rem;
             font-weight: bold;
             background: rgba(0, 0, 0, 0.3);
             padding: 4px 16px;
             border-radius: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .record-label {
+            color: #a5d6a7;
+            margin-left: 2px;
         }
 
         #solitaire-board {
@@ -99,7 +106,6 @@
             gap: var(--card-gap);
         }
 
-        /* 개선사항: 패가 쌓일 때 왼쪽으로 늘어나며 덱을 밀어내는 동적 컨테이너 */
         .left-decks {
             display: flex;
             align-items: flex-start;
@@ -107,7 +113,6 @@
             position: relative;
         }
 
-        /* 초기에는 카드 1장 폭이었다가 카드가 채워지면 자바스크립트가 자동으로 width를 넓힙니다 */
         #waste-slot-container {
             position: relative;
             width: var(--card-width);
@@ -258,7 +263,6 @@
         .home_ic {
             color: #fff !important;
         }
-        
     </style>
 </head>
 
@@ -266,26 +270,23 @@
 
     <header>
         <div class="top_box">
-            <a href="../../index.html" class="home_ic">
-                ⬅
-            </a>
+            <a href="../../index.html" class="home_ic">⬅</a>
             <h1>SOLITAIRE</h1>
         </div>
         <div id="score-board">
-            <div>MOVES: <span id="move-count">0</span></div>
+            <div>MOVES: <span id="move-count">0</span><span id="best-moves" class="record-label">(-)</span></div>
+            <div>TIME: <span id="game-time">00:00</span><span id="best-time" class="record-label">(-)</span></div>
         </div>
     </header>
 
     <div id="solitaire-board">
         <div class="top-region">
-            <!-- 정리 영역 (좌측) -->
             <div class="right-decks">
                 <div id="foundation-0" class="card-slot foundation" data-suit="♠"></div>
                 <div id="foundation-1" class="card-slot foundation" data-suit="♥"></div>
                 <div id="foundation-2" class="card-slot foundation" data-suit="◆"></div>
                 <div id="foundation-3" class="card-slot foundation" data-suit="♣"></div>
             </div>
-            <!-- 덱 영역 (우측) -->
             <div class="left-decks">
                 <div id="waste-slot-container">
                     <div id="waste-slot" style="position: relative; width: 100%; height: 100%;"></div>
@@ -306,7 +307,7 @@
     </div>
 
     <div id="controls">
-        <button class="btn" onclick="initGame()">새 게임</button>
+        <button class="btn" onclick="restartGame()">새 게임</button>
         <button id="undo-btn" class="btn" onclick="undo()" disabled>↩️ 되돌리기</button>
     </div>
 
@@ -317,7 +318,13 @@
 
         let deck = [];
         let gameState = { stock: [], waste: [], foundation: [[], [], [], []], tableau: [[], [], [], [], [], [], []] };
+        
         let moves = 0;
+        let fewestMoves = Infinity;  // 최소 이동 횟수
+        let timeElapsed = 0;
+        let bestTime = Infinity;     // 최소 소요 시간(초)
+        let timerInterval = null;
+
         let isAnimating = false;
         let isAutoCompleting = false;
         let historyStack = [];
@@ -353,28 +360,129 @@
             }
         }
 
-        function initGame() {
-            moves = 0;
-            isAnimating = false;
-            isAutoCompleting = false;
-            lastUserDemotedCardId = null;
-            historyStack = [];
+        function incrementMoves() {
+            moves++;
             document.getElementById('move-count').innerText = moves;
-            updateUndoButtonState();
-            buildDeck();
-            shuffle(deck);
+        }
 
-            gameState.stock = []; gameState.waste = [];
-            gameState.foundation = [[], [], [], []];
-            gameState.tableau = [[], [], [], [], [], [], []];
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeElapsed++;
+                drawTimer(timeElapsed, 'game-time');
+                if (timeElapsed % 5 === 0) {
+                    saveGameState();
+                }
+            }, 1000);
+        }
 
-            for (let i = 0; i < 7; i++) {
-                for (let j = i; j < 7; j++) { gameState.tableau[j].push(deck.pop()); }
-                gameState.tableau[i][gameState.tableau[i].length - 1].isFaceUp = true;
+        function drawTimer(seconds, elementId) {
+            const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const secs = (seconds % 60).toString().padStart(2, '0');
+            document.getElementById(elementId).innerText = `${mins}:${secs}`;
+        }
+
+        function formatTimeDisplay(seconds) {
+            if (seconds === Infinity || !seconds) return '(-)';
+            const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const secs = (seconds % 60).toString().padStart(2, '0');
+            return `(${mins}:${secs})`;
+        }
+
+        function saveGameState() {
+            localStorage.setItem('solitaire_moves_gameState', JSON.stringify(gameState));
+            localStorage.setItem('solitaire_moves_count', moves);
+            localStorage.setItem('solitaire_moves_time', timeElapsed);
+            localStorage.setItem('solitaire_moves_history', JSON.stringify(historyStack));
+        }
+
+        function clearSavedState() {
+            localStorage.removeItem('solitaire_moves_gameState');
+            localStorage.removeItem('solitaire_moves_count');
+            localStorage.removeItem('solitaire_moves_time');
+            localStorage.removeItem('solitaire_moves_history');
+        }
+
+        function initGame() {
+            clearInterval(timerInterval);
+
+            // 로컬스토리지에서 최소 이동 기록 로드
+            const savedFewest = localStorage.getItem('solitaire_fewestMoves');
+            if (savedFewest) {
+                fewestMoves = parseInt(savedFewest);
+                document.getElementById('best-moves').innerText = `(${fewestMoves})`;
+            } else {
+                fewestMoves = Infinity;
+                document.getElementById('best-moves').innerText = '(-)';
             }
 
-            gameState.stock = deck;
-            renderBoard();
+            // 로컬스토리지에서 최소 시간 기록 로드
+            const savedBestTime = localStorage.getItem('solitaire_bestTime');
+            if (savedBestTime) {
+                bestTime = parseInt(savedBestTime);
+                document.getElementById('best-time').innerText = formatTimeDisplay(bestTime);
+            } else {
+                bestTime = Infinity;
+                document.getElementById('best-time').innerText = '(-)';
+            }
+
+            const savedState = localStorage.getItem('solitaire_moves_gameState');
+            const savedCount = localStorage.getItem('solitaire_moves_count');
+            const savedTime = localStorage.getItem('solitaire_moves_time');
+            const savedHistory = localStorage.getItem('solitaire_moves_history');
+
+            if (savedState && savedCount !== null && savedTime !== null) {
+                gameState = JSON.parse(savedState);
+                moves = parseInt(savedCount);
+                timeElapsed = parseInt(savedTime);
+                historyStack = savedHistory ? JSON.parse(savedHistory) : [];
+
+                document.getElementById('move-count').innerText = moves;
+                drawTimer(timeElapsed, 'game-time');
+                
+                isAnimating = false;
+                isAutoCompleting = false;
+                lastUserDemotedCardId = null;
+
+                updateUndoButtonState();
+                renderBoard();
+                startTimer();
+            } else {
+                moves = 0;
+                timeElapsed = 0;
+                isAnimating = false;
+                isAutoCompleting = false;
+                lastUserDemotedCardId = null;
+                historyStack = [];
+
+                document.getElementById('move-count').innerText = moves;
+                drawTimer(timeElapsed, 'game-time');
+                updateUndoButtonState();
+
+                buildDeck();
+                shuffle(deck);
+
+                gameState.stock = []; gameState.waste = [];
+                gameState.foundation = [[], [], [], []];
+                gameState.tableau = [[], [], [], [], [], [], []];
+
+                for (let i = 0; i < 7; i++) {
+                    for (let j = i; j < 7; j++) { gameState.tableau[j].push(deck.pop()); }
+                    gameState.tableau[i][gameState.tableau[i].length - 1].isFaceUp = true;
+                }
+
+                gameState.stock = deck;
+                renderBoard();
+                startTimer();
+                saveGameState();
+            }
+        }
+
+        function restartGame() {
+            if(confirm("현재 진행 중인 판을 포기하고 새 게임을 시작하시겠습니까?")) {
+                clearSavedState();
+                initGame();
+            }
         }
 
         function saveToHistory() {
@@ -398,6 +506,7 @@
             document.getElementById('move-count').innerText = moves;
             updateUndoButtonState();
             renderBoard();
+            saveGameState();
         }
 
         function updateUndoButtonState() {
@@ -419,7 +528,9 @@
             if (gameState.stock.length === 0) {
                 gameState.stock = gameState.waste.reverse().map(card => { card.isFaceUp = false; return card; });
                 gameState.waste = [];
+                incrementMoves();
                 renderBoard();
+                saveGameState();
             } else {
                 animateStockDraw();
             }
@@ -434,7 +545,6 @@
             tempCard.className = 'card back moving';
             stockSlot.appendChild(tempCard);
 
-            // 애니메이션 시작 시 미리 컨테이너 폭 확장 연출 설정
             const currentWasteCount = gameState.waste.length + 1;
             const targetVisibleIdx = Math.min(currentWasteCount, 3) - 1;
             updateWasteContainerWidth(currentWasteCount);
@@ -450,15 +560,14 @@
                 let card = gameState.stock.pop();
                 card.isFaceUp = true;
                 gameState.waste.push(card);
-                moves++;
-                document.getElementById('move-count').innerText = moves;
+                incrementMoves();
                 isAnimating = false;
                 renderBoard();
+                saveGameState();
                 triggerAutoCompleteLoop();
             }, 230);
         }
 
-        // 가시적인 카드 장수에 맞춰 컨테이너 가로폭을 동적으로 변경하는 함수
         function updateWasteContainerWidth(count) {
             const container = document.getElementById('waste-slot-container');
             const visibleCount = Math.min(count, 3);
@@ -495,7 +604,6 @@
             baseSlot.style.zIndex = '0';
             wasteSlot.appendChild(baseSlot);
 
-            // 현재 카드 장수에 맞추어 가로 영역 가변 조절
             updateWasteContainerWidth(gameState.waste.length);
 
             if (gameState.waste.length > 0) {
@@ -687,15 +795,13 @@
 
             if (fromZone === 'tableau' && gameState.tableau[fromIdx].length > 0) {
                 let topCard = gameState.tableau[fromIdx][gameState.tableau[fromIdx].length - 1];
-                if (!topCard.isFaceUp) {
-                    topCard.isFaceUp = true;
-                }
+                topCard.isFaceUp = true;
             }
 
-            moves++;
-            document.getElementById('move-count').innerText = moves;
+            incrementMoves();
             isAnimating = false;
             renderBoard();
+            saveGameState();
         }
 
         async function triggerAutoCompleteLoop() {
@@ -763,9 +869,45 @@
             for (let i = 0; i < 4; i++) {
                 if (gameState.foundation[i].length !== 13) return false;
             }
+            clearInterval(timerInterval);
             isAutoCompleting = false;
+            clearSavedState();
+
+            let isNewMoveRecord = false;
+            let isNewTimeRecord = false;
+
+            // 1. 최소 이동 횟수 검증
+            if (moves < fewestMoves) {
+                fewestMoves = moves;
+                localStorage.setItem('solitaire_fewestMoves', fewestMoves);
+                isNewMoveRecord = true;
+            }
+
+            // 2. 최소 시간 검증
+            if (timeElapsed < bestTime) {
+                bestTime = timeElapsed;
+                localStorage.setItem('solitaire_bestTime', bestTime);
+                isNewTimeRecord = true;
+            }
+
+            const currentGameTimeStr = document.getElementById('game-time').innerText;
+            const bestTimeStr = formatTimeDisplay(bestTime).replace(/[\(\)]/g, '');
+
             setTimeout(() => {
-                alert(`🎉 축하합니다! 완벽하게 클리어하셨습니다!`);
+                let alertMessage = `🎉 축하합니다! 완벽하게 클리어하셨습니다!\n\n`;
+                alertMessage += `• 최종 이동 횟수: ${moves}회\n`;
+                alertMessage += `• 최종 소요 시간: ${currentGameTimeStr}\n\n`;
+
+                if (isNewMoveRecord || isNewTimeRecord) {
+                    alertMessage += `🌟 [신기록 달성] 🌟\n`;
+                    if (isNewMoveRecord) alertMessage += `- 최소 이동 횟수 갱신! 🥳\n`;
+                    if (isNewTimeRecord) alertMessage += `- 최소 소요 시간 갱신! ⏱️\n`;
+                } else {
+                    alertMessage += `• 최고 기록치 정보\n`;
+                    alertMessage += `- 최소 이동: ${fewestMoves}회 / 최소 시간: ${bestTimeStr}\n`;
+                }
+
+                alert(alertMessage);
             }, 100);
             return true;
         }
